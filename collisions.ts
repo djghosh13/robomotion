@@ -42,10 +42,10 @@ class CircleCollider implements Collider {
     }
 }
 
-function collideArm(armature: Bone[], colliders: Collider[]) {
-    for (let i = 0; i < armature.length; i++) {
-        for (let collider of colliders) {
-            collider.fixCollision(armature[i]);
-        }
+function boneCollide(bone: Bone, colliders: Collider[]) {
+    let collided = false;
+    for (let collider of colliders) {
+        collided ||= collider.fixCollision(bone);
     }
+    return collided;
 }

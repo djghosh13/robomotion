@@ -33,10 +33,10 @@ class CircleCollider {
         ctx.stroke();
     }
 }
-function collideArm(armature, colliders) {
-    for (let i = 0; i < armature.length; i++) {
-        for (let collider of colliders) {
-            collider.fixCollision(armature[i]);
-        }
+function boneCollide(bone, colliders) {
+    let collided = false;
+    for (let collider of colliders) {
+        collided || (collided = collider.fixCollision(bone));
     }
+    return collided;
 }

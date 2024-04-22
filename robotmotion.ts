@@ -1,4 +1,4 @@
-function fiztrak(armature: Bone[], target: Vector, rotationSpeed: number | number[]) {
+function computeMoI(armature: Bone[]) {
     // Compute moment of inertia
     let moments: number[] = [];
     let totalWeight = 0;
@@ -20,20 +20,17 @@ function fiztrak(armature: Bone[], target: Vector, rotationSpeed: number | numbe
         totalWeight += armature[i].length;
         moments.unshift(rotationalWeight / totalWeight / totalWeight * 2);
     }
+    return moments;
+}
+
+function boneTrack(bone: Bone, target: Vector, tracking: Bone, moment: number, rotationSpeed: number) {
     // Track
-    for (let i = 0; i < armature.length; i++) {
-        let diff = clipAngle(
-            target.sub(armature[i].start).angle - armature[armature.length - 1].end.sub(armature[i].start).angle
-        );
-        let maxDiff: number;
-        if (rotationSpeed instanceof Array) {
-            maxDiff = rotationSpeed[i] / moments[i];
-        } else {
-            maxDiff = rotationSpeed / moments[i];
-        }
-        diff = (diff > maxDiff) ? maxDiff : (diff < -maxDiff) ? -maxDiff : diff;
-        armature[i].angle += diff;
-    }
+    let diff = clipAngle(
+        target.sub(bone.start).angle - tracking.end.sub(bone.start).angle
+    );
+    let maxDiff = rotationSpeed / moment;
+    diff = (diff > maxDiff) ? maxDiff : (diff < -maxDiff) ? -maxDiff : diff;
+    bone.angle += diff;
 }
 
 function lerpVector(start: Vector, end: Vector, value: number[]) {

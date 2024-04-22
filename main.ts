@@ -8,17 +8,28 @@
 //         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 }
 //     ]
 // });
+// var armature = buildArmGraphics({
+//     root: [ 300, 300 ],
+//     bones: [
+//         { length: 100, constraints: [ -1, 1 ], width: 13 },
+//         { length: 25, constraints: [ -1, 1 ], width: 8 },
+//         { length: 80, constraints: [ -0.8, 0.01 ], width: 10 },
+//         { length: 35, constraints: [ -0.4, 0.25 ], width: 8 },
+//         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 },
+//         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 }
+//     ]
+// });
 var armature = buildArmGraphics({
     root: [ 300, 300 ],
     bones: [
-        { length: 100, constraints: [ -1, 1 ], width: 13 },
-        { length: 25, constraints: [ -1, 1 ], width: 8 },
-        { length: 80, constraints: [ -0.8, 0.01 ], width: 10 },
-        { length: 35, constraints: [ -0.4, 0.25 ], width: 8 },
+        { length: 140, constraints: [ -1, 1 ], width: 15 },
+        { length: 65, constraints: [ -0.8, 0.01 ], width: 8 },
+        { length: 35, constraints: [ -0.4, 0.25 ], width: 10 },
         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 },
         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 }
     ]
 });
+
 
 var colliders: Collider[] = [
     new CircleCollider(new Vector(500, 300), 50)
@@ -53,11 +64,23 @@ function update(ctx: CanvasRenderingContext2D) {
     // }
     const MAX_ROTATION = [
         // 0.05, 0.1, 0.02, 0.05, 0.02
-        0.05, 0.06, 0.06, 0.05, 0.02, 0.01
+        // 0.05, 0.06, 0.06, 0.05, 0.02, 0.01
+        0.02, 0.05, 0.08, 0.03, 0.03
     ].map(x => x / MAX_ITER);
     for (let i = 0; i < MAX_ITER; i++) {
-        fiztrak(armature, mouse, MAX_ROTATION);
-        collideArm(armature, colliders);
+        let moments = computeMoI(armature);
+        // for (let j = armature.length - 1; j >= 0; j--) {
+        //     boneTrack(armature[j], mouse, armature[armature.length - 1], moments[j], MAX_ROTATION[j]);
+        //     if (boneCollide(armature[j], colliders)) {
+        //         break;
+        //     }
+        // }
+        for (let j = 0; j < armature.length; j++) {
+            boneTrack(armature[j], mouse, armature[armature.length - 1], moments[j], MAX_ROTATION[j]);
+        }
+        for (let j = 0; j < armature.length; j++) {
+            boneCollide(armature[j], colliders);
+        }
     }
     // Draw armature
     setup(ctx);
