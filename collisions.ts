@@ -1,7 +1,16 @@
 interface Collider {
-    fixCollision(bone: Bone, tracking: Bone, angleDiff: number): number;
+    fixCollision(base: Bone, tracking: Bone, angleDiff: number): number;
     render(ctx: CanvasRenderingContext2D): void;
 }
+
+
+function boneCollide(bone: Bone, tracking: Bone, angleDiff: number, colliders: Collider[]) {
+    for (let collider of colliders) {
+        angleDiff = collider.fixCollision(bone, tracking, angleDiff);
+    }
+    return angleDiff;
+}
+
 
 class CircleCollider implements Collider {
     constructor(
@@ -13,7 +22,6 @@ class CircleCollider implements Collider {
     }
     render(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
-        ctx.lineWidth = 1;
         ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
         ctx.closePath();
         ctx.stroke();
@@ -75,9 +83,50 @@ class CircleCollider implements Collider {
     }
 }
 
-function boneCollide(bone: Bone, tracking: Bone, angleDiff: number, colliders: Collider[]) {
-    for (let collider of colliders) {
-        angleDiff = collider.fixCollision(bone, tracking, angleDiff);
+class HalfPlaneCollider implements Collider {
+    constructor(
+            public point: Vector,
+            public normal: Vector
+        ) {}
+    fixCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        // Only the end of a bone can hit the half-plane
+        return this.boneEndCollision(base, tracking, angleDiff);
     }
-    return angleDiff;
+    render(ctx: CanvasRenderingContext2D) {
+        const EPSILON = 1e-6;
+        let ndotp = this.normal.dot(this.point);
+        let pointA: Vector | null = null;
+        let pointB: Vector | null = null;
+        if (Math.abs(this.normal.x) > EPSILON) {
+            pointA = new Vector(ndotp / this.normal.x, 0);
+            pointB = new Vector((ndotp - this.normal.y * ctx.canvas.height) / this.normal.x, ctx.canvas.height);
+        } else if (Math.abs(this.normal.y) > EPSILON) {
+            pointA = new Vector(0, ndotp / this.normal.y);
+            pointB = new Vector(ctx.canvas.width, (ndotp - this.normal.x * ctx.canvas.width) / this.normal.y);
+        }
+        if (pointA != null && pointB != null) {
+            ctx.beginPath();
+            ctx.moveTo(pointA.x, pointA.y);
+            ctx.lineTo(pointB.x, pointB.y);
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }
+    boneEndCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        let currentAngle = tracking.end.sub(base.start).angle;
+        let planeAngle = clipAngle(this.normal.angle + Math.PI);
+        let distanceToPlane = base.start.sub(this.point).dot(this.normal);
+        let A = tracking.end.sub(base.start).norm;
+        let contactDiff = Math.acos(distanceToPlane / A);
+        if (!Number.isNaN(contactDiff)) {
+            let currentDiff = clipAngle(planeAngle - (currentAngle + angleDiff));
+            if (angleDiff > 0 && currentDiff > 0 && currentDiff < contactDiff) {
+                angleDiff -= contactDiff - currentDiff;
+            }
+            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < contactDiff) {
+                angleDiff += contactDiff - (-currentDiff);
+            }
+        }
+        return angleDiff;
+    }
 }

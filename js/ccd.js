@@ -21,15 +21,12 @@ class Transform {
     }
 }
 class Bone {
-    // constructor(offset: Vector, parent?: Bone);
-    // constructor(offsetX: number, parent?: Bone);
     constructor(offset, parent) {
         if (!(offset instanceof Vector)) {
             offset = new Vector(offset, 0);
         }
         this.offset = offset;
         this.parent = parent;
-        // this.constraints = constraints.map(x => x * Math.PI);
         if (parent != null) {
             this.transform = new Transform(offset, 0, parent.transform);
         }
@@ -45,7 +42,6 @@ class Bone {
     }
     set angle(value) {
         if (this.parent != null) {
-            // this.parent.transform.localRotation = constrain(value, this.constraints);
             this.parent.transform.localRotation = clipAngle(value);
         }
     }
@@ -82,15 +78,4 @@ function buildArm(params) {
         bones.push(new Bone(params.bones[i].length, bones[i]));
     }
     return bones;
-}
-function ccd(bone, target, tracking) {
-    if (bone.parent != null) {
-        if (tracking == null) {
-            tracking = bone;
-        }
-        let angle = target.sub(bone.start).angle - tracking.end.sub(bone.start).angle;
-        bone.angle += angle;
-        // Recursion
-        ccd(bone.parent, target, tracking);
-    }
 }

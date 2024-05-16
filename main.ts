@@ -1,25 +1,26 @@
-// var armature: BoneGraphics[] = buildArmGraphics({
-//     root: [ 300, 300 ],
-//     bones: [
-//         { length: 120, constraints: [ -1, 1 ], width: 15 },
-//         { length: 100, constraints: [ -0.8, 0.01 ], width: 13 },
-//         { length: 20, constraints: [ -0.4, 0.25 ], width: 8 },
-//         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 },
-//         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 }
-//     ]
-// });
-// var armature = buildArmGraphics({
-//     root: [ 300, 300 ],
-//     bones: [
-//         { length: 100, constraints: [ -1, 1 ], width: 13 },
-//         { length: 25, constraints: [ -1, 1 ], width: 8 },
-//         { length: 80, constraints: [ -0.8, 0.01 ], width: 10 },
-//         { length: 35, constraints: [ -0.4, 0.25 ], width: 8 },
-//         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 },
-//         { length: 10, constraints: [ -0.5, 0.01 ], width: 6 }
-//     ]
-// });
-var armature = buildArmGraphics({
+const ARMATURE_PRESETS = new Map<string, BoneGraphics[]>();
+ARMATURE_PRESETS.set("human_arm", buildArmGraphics({
+    root: [ 300, 300 ],
+    bones: [
+        { length: 120, speed: 0.05, width: 15 },
+        { length: 100, speed: 0.08, width: 13 },
+        { length: 20, speed: 0.02, width: 8 },
+        { length: 10, speed: 0.05, width: 6 },
+        { length: 10, speed: 0.02, width: 6 }
+    ]
+}));
+ARMATURE_PRESETS.set("many_joints", buildArmGraphics({
+    root: [ 300, 300 ],
+    bones: [
+        { length: 100, speed: 0.04, width: 13 },
+        { length: 25, speed: 0.04, width: 8 },
+        { length: 80, speed: 0.04, width: 10 },
+        { length: 35, speed: 0.04, width: 8 },
+        { length: 10, speed: 0.07, width: 6 },
+        { length: 10, speed: 0.05, width: 6 }
+    ]
+}));
+ARMATURE_PRESETS.set("slow_arm", buildArmGraphics({
     root: [ 300, 300 ],
     bones: [
         { length: 140, speed: 0.02, width: 15 },
@@ -28,11 +29,12 @@ var armature = buildArmGraphics({
         { length: 10, speed: 0.03, width: 6 },
         { length: 10, speed: 0.03, width: 6 }
     ]
-});
+}));
 
-
+var armature = ARMATURE_PRESETS.get("human_arm")!;
 var colliders: Collider[] = [
-    new CircleCollider(new Vector(500, 300), 50)
+    new CircleCollider(new Vector(500, 300), 50),
+    new HalfPlaneCollider(new Vector(150, 150), new Vector(1, 1).normalized())
 ];
 
 var mouse = new Vector(100, 100);
@@ -57,11 +59,6 @@ function background(ctx: CanvasRenderingContext2D, color: string) {
 
 function update(ctx: CanvasRenderingContext2D) {
     const MAX_ITER = 4;
-    const MAX_ROTATION = [
-        // 0.05, 0.1, 0.02, 0.05, 0.02
-        // 0.04, 0.04, 0.04, 0.04, 0.07, 0.05
-    ].map(x => x / MAX_ITER);
-
     for (let i = 0; i < MAX_ITER; i++) {
         let moments = computeMoI(armature);
         for (let j = 0; j < armature.length; j++) {
@@ -77,9 +74,13 @@ function update(ctx: CanvasRenderingContext2D) {
     }
     // Draw armature
     setup(ctx);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#008cff";
     for (let i = 0; i < colliders.length; i++) {
         colliders[i].render(ctx);
     }
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "white";
     for (let i = 0; i < armature.length; i++) {
         armature[i].render(ctx);
     }
@@ -88,6 +89,23 @@ function update(ctx: CanvasRenderingContext2D) {
 
 document.onreadystatechange = function(event) {
     if (document.readyState == "complete") {
+        // Set up selector
+        let selector = document.querySelector("#armature")!;
+        for (let key of ARMATURE_PRESETS.keys()) {
+            let element = document.createElement("option");
+            element.setAttribute("value", key);
+            element.innerText = key;
+            selector?.appendChild(element);
+        }
+        selector.addEventListener("change", function(event) {
+            if (event.target instanceof HTMLSelectElement) {
+                let result = ARMATURE_PRESETS.get(event.target.value);
+                if (result != null) {
+                    armature = result;
+                }
+            }
+        })
+        // Set up canvas
         let canvas = document.querySelector("#simulation");
         if (canvas instanceof HTMLCanvasElement) {
             let context = canvas.getContext("2d");

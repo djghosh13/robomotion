@@ -10,7 +10,6 @@ class BoneGraphics extends BonePhysics {
         let endLeft = this.end.add(ortho.mul(this.lineWidth / 2));
         let endRight = this.end.sub(ortho.mul(this.lineWidth / 2));
         ctx.beginPath();
-        ctx.lineWidth = 1;
         ctx.moveTo(startLeft.x, startLeft.y);
         ctx.lineTo(endLeft.x, endLeft.y);
         ctx.lineTo(endRight.x, endRight.y);
