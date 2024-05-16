@@ -1,6 +1,6 @@
-class BoneGraphics extends Bone {
-    constructor(offset, parent, width) {
-        super(offset, parent);
+class BoneGraphics extends BonePhysics {
+    constructor(offset, parent, speed, width) {
+        super(offset, parent, speed);
         this.lineWidth = width;
     }
     render(ctx) {
@@ -34,9 +34,7 @@ function buildArmGraphics(params) {
     }
     // Bones
     for (let i = 0; i < params.bones.length; i++) {
-        bones.push(new BoneGraphics(params.bones[i].length, (i == 0) ? rootNode : bones[i - 1], 
-        // params.bones[i].constraints,
-        params.bones[i].width));
+        bones.push(new BoneGraphics(params.bones[i].length, (i == 0) ? rootNode : bones[i - 1], params.bones[i].speed || TWO_PI, params.bones[i].width));
     }
     return bones;
 }

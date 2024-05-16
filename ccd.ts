@@ -67,9 +67,19 @@ class Root extends Bone {
 }
 
 
+class BonePhysics extends Bone {
+    rotationSpeed: number;
+
+    constructor(offset: Vector | number, parent: Bone, speed: number) {
+        super(offset, parent);
+        this.rotationSpeed = speed;
+    }
+}
+
+
 type BoneParameters = {
     length: number;
-    constraints?: any;
+    speed?: number;
 };
 type ArmParameters = {
     root: Root | Vector | number[];
@@ -88,7 +98,6 @@ function buildArm(params: ArmParameters) {
     }
     // Bones
     for (let i = 0; i < params.bones.length; i++) {
-        // bones.push(new Bone(params.bones[i].length, bones[i], params.bones[i].constraints));
         bones.push(new Bone(params.bones[i].length, bones[i]));
     }
     return bones;
@@ -106,13 +115,3 @@ function ccd(bone: Bone, target: Vector, tracking?: Bone) {
         ccd(bone.parent, target, tracking);
     }
 }
-
-// function constrain(angle, constraints) {
-//     angle = angle.toAngle();
-//     if (constraints[0] < angle && angle < constraints[1]) {
-//         return angle;
-//     }
-//     let diff0 = Math.abs((constraints[0] - angle).toAngle());
-//     let diff1 = Math.abs((constraints[1] - angle).toAngle());
-//     return (diff0 < diff1) ? constraints[0] : constraints[1];
-// }

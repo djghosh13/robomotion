@@ -22,11 +22,11 @@
 var armature = buildArmGraphics({
     root: [300, 300],
     bones: [
-        { length: 140, constraints: [-1, 1], width: 15 },
-        { length: 65, constraints: [-0.8, 0.01], width: 8 },
-        { length: 35, constraints: [-0.4, 0.25], width: 10 },
-        { length: 10, constraints: [-0.5, 0.01], width: 6 },
-        { length: 10, constraints: [-0.5, 0.01], width: 6 }
+        { length: 140, speed: 0.02, width: 15 },
+        { length: 65, speed: 0.05, width: 8 },
+        { length: 35, speed: 0.08, width: 10 },
+        { length: 10, speed: 0.03, width: 6 },
+        { length: 10, speed: 0.03, width: 6 }
     ]
 });
 var colliders = [
@@ -48,30 +48,19 @@ function background(ctx, color) {
     ctx.fillStyle = fill;
 }
 function update(ctx) {
-    const MAX_ITER = 10;
-    // TRACKING!
-    // let error = ccd(armature[armature.length - 1], mouse);
-    // for (let i = 0; i < MAX_ITER; i++) {
-    //     error = ccd(armature[armature.length - 1], mouse);
-    // }
+    const MAX_ITER = 4;
     const MAX_ROTATION = [
-        // 0.05, 0.1, 0.02, 0.05, 0.02
-        // 0.05, 0.06, 0.06, 0.05, 0.02, 0.01
-        0.02, 0.05, 0.08, 0.03, 0.03
+    // 0.05, 0.1, 0.02, 0.05, 0.02
+    // 0.04, 0.04, 0.04, 0.04, 0.07, 0.05
     ].map(x => x / MAX_ITER);
     for (let i = 0; i < MAX_ITER; i++) {
         let moments = computeMoI(armature);
-        // for (let j = armature.length - 1; j >= 0; j--) {
-        //     boneTrack(armature[j], mouse, armature[armature.length - 1], moments[j], MAX_ROTATION[j]);
-        //     if (boneCollide(armature[j], colliders)) {
-        //         break;
-        //     }
-        // }
         for (let j = 0; j < armature.length; j++) {
-            boneTrack(armature[j], mouse, armature[armature.length - 1], moments[j], MAX_ROTATION[j]);
-        }
-        for (let j = 0; j < armature.length; j++) {
-            boneCollide(armature[j], colliders);
+            let desiredAngle = boneTrack(armature[j], mouse, armature[armature.length - 1], moments[j], armature[j].rotationSpeed / MAX_ITER);
+            for (let k = j; k < armature.length; k++) {
+                desiredAngle = boneCollide(armature[j], armature[k], desiredAngle, colliders);
+            }
+            armature[j].angle += desiredAngle;
         }
     }
     // Draw armature
@@ -88,7 +77,7 @@ document.onreadystatechange = function (event) {
         let canvas = document.querySelector("#simulation");
         if (canvas instanceof HTMLCanvasElement) {
             let context = canvas.getContext("2d");
-            window.setInterval(update, 25, context);
+            window.setInterval(update, 20, context);
             canvas.addEventListener("mousemove", event => {
                 mouse = new Vector(event.offsetX, event.offsetY);
             });

@@ -1,10 +1,5 @@
-// type CollisionInfo = {
-//     point: Vector;
-//     normal: Vector;
-// };
-
 interface Collider {
-    fixCollision(bone: Bone): boolean;
+    fixCollision(bone: Bone, tracking: Bone, angleDiff: number): number;
     render(ctx: CanvasRenderingContext2D): void;
 }
 
@@ -13,25 +8,8 @@ class CircleCollider implements Collider {
             public center: Vector,
             public radius: number
         ) {}
-    fixCollision(bone: Bone) {
-        // Tangent collision
-        let trueT = Math.sqrt(this.center.sub(bone.start).norm2 - this.radius*this.radius) / bone.length;
-        let collisionT = Math.min(trueT, 1);
-        // let point = bone.start.add(bone.end.sub(bone.start).mul(collisionT));
-        let d = this.center.sub(bone.start);
-        let l = bone.end.sub(bone.start).mul(collisionT);
-        let minAngle = Math.acos(
-            (d.norm2 + l.norm2 - this.radius*this.radius) /
-            (2 * d.norm * l.norm)
-        );
-        let curAngle = clipAngle(bone.end.sub(bone.start).angle - this.center.sub(bone.start).angle);
-        if (Math.abs(curAngle) < minAngle) {
-            // console.log("Collide!", minAngle, curAngle);
-            let diff = minAngle * Math.sign(curAngle) - curAngle;
-            bone.angle += diff;
-            return true;
-        }
-        return false;
+    fixCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        return this.boneTangentCollision(base, tracking, this.boneEndCollision(base, tracking, angleDiff));
     }
     render(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
@@ -40,12 +18,66 @@ class CircleCollider implements Collider {
         ctx.closePath();
         ctx.stroke();
     }
+    boneEndCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        let currentAngle = tracking.end.sub(base.start).angle;
+        let centerAngle = this.center.sub(base.start).angle;
+        let A = tracking.end.sub(base.start).norm;
+        let B = this.center.sub(base.start).norm;
+        let tangentDiff = Math.acos((A*A + B*B - this.radius*this.radius) / (2*A*B));
+        if (!Number.isNaN(tangentDiff)) {
+            let currentDiff = clipAngle(centerAngle - (currentAngle + angleDiff));
+            if (angleDiff > 0 && currentDiff > 0 && currentDiff < tangentDiff) {
+                angleDiff -= tangentDiff - currentDiff;
+            }
+            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < tangentDiff) {
+                angleDiff += tangentDiff - (-currentDiff);
+            }
+        }
+        return angleDiff;
+    }
+    boneTangentCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        let tMin = tracking.start.sub(base.start).dot(tracking.end.sub(tracking.start).normalized());
+        let tMax = tMin + tracking.length;
+        let A = tracking.start.sub(base.start).cross(tracking.end.sub(tracking.start).normalized());
+        let B = this.center.sub(base.start).norm;
+        // Get potential solutions
+        let solutions: number[] = [];
+        for (let facing of [1, -1]) {
+            let t = Math.sqrt(B*B - (A*facing - this.radius)*(A*facing - this.radius));
+            if (!Number.isNaN(t)) {
+                if (tMin < t && t < tMax) {
+                    solutions.push(t);
+                }
+                if (tMin < -t && -t < tMax) {
+                    solutions.push(-t);
+                }
+            }
+        }
+        // Solve for collision directions
+        for (let t of solutions) {
+            let trackedPoint = tracking.start.add(tracking.end.sub(tracking.start).mul((t - tMin) / (tMax - tMin)));
+            let currentAngle = trackedPoint.sub(base.start).angle;
+            let centerAngle = this.center.sub(base.start).angle;
+            let A = trackedPoint.sub(base.start).norm;
+            let B = this.center.sub(base.start).norm;
+            let tangentDiff = Math.acos((A*A + B*B - this.radius*this.radius) / (2*A*B));
+            if (!Number.isNaN(tangentDiff)) {
+                let currentDiff = clipAngle(centerAngle - (currentAngle + angleDiff));
+                if (angleDiff > 0 && currentDiff > 0 && currentDiff < tangentDiff) {
+                    angleDiff -= tangentDiff - currentDiff;
+                }
+                if (angleDiff < 0 && currentDiff < 0 && -currentDiff < tangentDiff) {
+                    angleDiff += tangentDiff - (-currentDiff);
+                }
+            }
+        }
+        return angleDiff;
+    }
 }
 
-function boneCollide(bone: Bone, colliders: Collider[]) {
-    let collided = false;
+function boneCollide(bone: Bone, tracking: Bone, angleDiff: number, colliders: Collider[]) {
     for (let collider of colliders) {
-        collided ||= collider.fixCollision(bone);
+        angleDiff = collider.fixCollision(bone, tracking, angleDiff);
     }
-    return collided;
+    return angleDiff;
 }

@@ -1,8 +1,8 @@
-class BoneGraphics extends Bone {
+class BoneGraphics extends BonePhysics {
     lineWidth: number;
 
-    constructor(offset: Vector | number, parent: Bone, width: number) {
-        super(offset, parent);
+    constructor(offset: Vector | number, parent: Bone, speed: number, width: number) {
+        super(offset, parent, speed);
         this.lineWidth = width;
     }
     render(ctx: CanvasRenderingContext2D) {
@@ -46,7 +46,7 @@ function buildArmGraphics(params: ArmGraphicsParameters) {
         bones.push(new BoneGraphics(
             params.bones[i].length,
             (i == 0) ? rootNode : bones[i - 1],
-            // params.bones[i].constraints,
+            params.bones[i].speed || TWO_PI,
             params.bones[i].width
         ));
     }

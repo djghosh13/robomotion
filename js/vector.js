@@ -24,15 +24,17 @@ class Vector {
         let s = Math.sin(angle);
         return new Vector(this.x * c - this.y * s, this.x * s + this.y * c);
     }
+    rotate90() { return new Vector(-this.y, this.x); }
     toArray() { return [this.x, this.y]; }
     static dot(a, b) { return a.dot(b); }
     static cross(a, b) { return a.x * b.y - a.y * b.x; }
+    static fromAngle(theta) { return new Vector(Math.cos(theta), Math.sin(theta)); }
     static get ZERO() { return new Vector(0, 0); }
 }
 const TWO_PI = 2 * Math.PI;
 function clipAngle(x) {
     let theta = x % TWO_PI;
-    if (theta < -Math.PI) {
+    if (theta <= -Math.PI) {
         return theta + TWO_PI;
     }
     if (theta > Math.PI) {
