@@ -122,3 +122,80 @@ class HalfPlaneCollider {
         return angleDiff;
     }
 }
+class TriangleCollider {
+    constructor(pointA, pointB, pointC) {
+        this.points = [pointA, pointB, pointC, pointA, pointB];
+    }
+    fixCollision(base, tracking, angleDiff) {
+        let proposed = [];
+        for (let i = 0; i < 3; i++) {
+            let halfPlane = new HalfPlaneCollider(this.points[i], this.points[i + 1].sub(this.points[i]).normalized().rotate90());
+            proposed.push(halfPlane.fixCollision(base, tracking, angleDiff));
+        }
+        if (angleDiff > 0) {
+            angleDiff = Math.max(...proposed);
+        }
+        if (angleDiff < 0) {
+            angleDiff = Math.min(...proposed);
+        }
+        return angleDiff;
+    }
+    render(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let i = 0; i < 3; i++) {
+            ctx.lineTo(this.points[i + 1].x, this.points[i + 1].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+class SegmentCollider {
+    constructor(pointA, pointB) {
+        this.pointA = pointA;
+        this.pointB = pointB;
+    }
+    fixCollision(base, tracking, angleDiff) {
+        // Only the end of a bone can hit the segment
+        return this.boneEndCollision(base, tracking, angleDiff);
+    }
+    render(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(this.pointA.x, this.pointA.y);
+        ctx.lineTo(this.pointB.x, this.pointB.y);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    boneEndCollision(base, tracking, angleDiff) {
+        let normal = this.pointB.sub(this.pointA).rotate90().normalized();
+        let A = tracking.end.sub(base.start).norm;
+        let solutions = [];
+        {
+            let uMin = this.pointA.sub(base.start).dot(this.pointB.sub(this.pointA).normalized());
+            let uMax = uMin + this.pointB.sub(this.pointA).norm;
+            let distanceToPlane = base.start.sub(this.pointA).dot(normal);
+            let u = Math.sqrt(A * A - distanceToPlane * distanceToPlane);
+            if (!Number.isNaN(u)) {
+                if (uMin < u && u < uMax) {
+                    solutions.push(u);
+                }
+                if (uMin < -u && -u < uMax) {
+                    solutions.push(-u);
+                }
+            }
+        }
+        let currentAngle = tracking.end.sub(base.start).angle;
+        let planeAngle = clipAngle(normal.angle + Math.PI);
+        let currentDiff = clipAngle(planeAngle - (currentAngle + angleDiff));
+        for (let u of solutions) {
+            let contactDiff = Math.asin(u / A);
+            if (angleDiff > 0 && currentDiff > 0 && currentDiff < contactDiff) {
+                angleDiff -= contactDiff - currentDiff;
+            }
+            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < contactDiff) {
+                angleDiff += contactDiff - (-currentDiff);
+            }
+        }
+        return angleDiff;
+    }
+}

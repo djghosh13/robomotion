@@ -33,7 +33,12 @@ ARMATURE_PRESETS.set("slow_arm", buildArmGraphics({
 var armature = ARMATURE_PRESETS.get("human_arm");
 var colliders = [
     new CircleCollider(new Vector(500, 300), 50),
-    new HalfPlaneCollider(new Vector(150, 150), new Vector(1, 1).normalized())
+    new HalfPlaneCollider(new Vector(200, 200), new Vector(50, 200).normalized()),
+    // new SegmentCollider(new Vector(200, 200), new Vector(400, 150))
+    // new TriangleCollider(new Vector(100, 200), new Vector(250, 100), new Vector(150, 50))
+];
+var constraints = [
+// new CircleConstraint(new Vector(250, 300), 200)
 ];
 var mouse = new Vector(100, 100);
 function setup(ctx) {
@@ -55,7 +60,11 @@ function update(ctx) {
     for (let i = 0; i < MAX_ITER; i++) {
         let moments = computeMoI(armature);
         for (let j = 0; j < armature.length; j++) {
+            // Compute desired trajectory
             let desiredAngle = boneTrack(armature[j], mouse, armature[armature.length - 1], moments[j], armature[j].rotationSpeed / MAX_ITER);
+            // Adjust for constraints
+            desiredAngle = boneConstrain(armature[j], armature[armature.length - 1], desiredAngle, constraints);
+            // Adjust for collisions
             for (let k = j; k < armature.length; k++) {
                 desiredAngle = boneCollide(armature[j], armature[k], desiredAngle, colliders);
             }
@@ -64,6 +73,11 @@ function update(ctx) {
     }
     // Draw armature
     setup(ctx);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#00ff8c";
+    for (let i = 0; i < constraints.length; i++) {
+        constraints[i].render(ctx);
+    }
     ctx.lineWidth = 3;
     ctx.strokeStyle = "#008cff";
     for (let i = 0; i < colliders.length; i++) {

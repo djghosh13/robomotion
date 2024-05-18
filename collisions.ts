@@ -130,3 +130,87 @@ class HalfPlaneCollider implements Collider {
         return angleDiff;
     }
 }
+
+
+class TriangleCollider implements Collider {
+    points: Vector[];
+    constructor(pointA: Vector, pointB: Vector, pointC: Vector) {
+        this.points = [pointA, pointB, pointC, pointA, pointB];
+    }
+    fixCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        let proposed: number[] = [];
+        for (let i = 0; i < 3; i++) {
+            let halfPlane = new HalfPlaneCollider(
+                this.points[i],
+                this.points[i + 1].sub(this.points[i]).normalized().rotate90()
+            );
+            proposed.push(halfPlane.fixCollision(base, tracking, angleDiff));
+        }
+        if (angleDiff > 0) {
+            angleDiff = Math.max(...proposed);
+        }
+        if (angleDiff < 0) {
+            angleDiff = Math.min(...proposed);
+        }
+        return angleDiff;
+    }
+    render(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let i = 0; i < 3; i++) {
+            ctx.lineTo(this.points[i + 1].x, this.points[i + 1].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+
+class SegmentCollider implements Collider {
+    constructor(
+            public pointA: Vector,
+            public pointB: Vector
+        ) {}
+    fixCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        // Only the end of a bone can hit the segment
+        return this.boneEndCollision(base, tracking, angleDiff);
+    }
+    render(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.moveTo(this.pointA.x, this.pointA.y);
+        ctx.lineTo(this.pointB.x, this.pointB.y);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    boneEndCollision(base: Bone, tracking: Bone, angleDiff: number) {
+        let normal = this.pointB.sub(this.pointA).rotate90().normalized();
+        let A = tracking.end.sub(base.start).norm;
+        let solutions: number[] = [];
+        {
+            let uMin = this.pointA.sub(base.start).dot(this.pointB.sub(this.pointA).normalized());
+            let uMax = uMin + this.pointB.sub(this.pointA).norm;
+            let distanceToPlane = base.start.sub(this.pointA).dot(normal);
+            let u = Math.sqrt(A*A - distanceToPlane*distanceToPlane);
+            if (!Number.isNaN(u)) {
+                if (uMin < u && u < uMax) {
+                    solutions.push(u);
+                }
+                if (uMin < -u && -u < uMax) {
+                    solutions.push(-u);
+                }
+            }
+        }
+        let currentAngle = tracking.end.sub(base.start).angle;
+        let planeAngle = clipAngle(normal.angle + Math.PI);
+        let currentDiff = clipAngle(planeAngle - (currentAngle + angleDiff));
+        for (let u of solutions) {
+            let contactDiff = Math.asin(u / A);
+            if (angleDiff > 0 && currentDiff > 0 && currentDiff < contactDiff) {
+                angleDiff -= contactDiff - currentDiff;
+            }
+            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < contactDiff) {
+                angleDiff += contactDiff - (-currentDiff);
+            }
+        }
+        return angleDiff;
+    }
+}
