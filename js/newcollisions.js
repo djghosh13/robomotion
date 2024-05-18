@@ -1,29 +1,13 @@
-type BoneEndData = {
-    offset: Vector;
-};
-type BoneEndCollision = {
-    start: number;
-    end: number;
-    always?: boolean;
-};
-
-interface NewCollider {
-    boneEndCollisions(base: Bone, boneEnd: BoneEndData): BoneEndCollision[];
-    render(ctx: CanvasRenderingContext2D): void;
-}
-
-
-function getCollisions(base: Bone, tracking: Bone, colliders: NewCollider[]) {
-    let collisions: BoneEndCollision[] = [];
+function getCollisions(base, tracking, colliders) {
+    let collisions = [];
     // Bone end
-    let boneEnd: BoneEndData = {offset: tracking.end.sub(base.start)};
+    let boneEnd = { offset: tracking.end.sub(base.start) };
     for (let collider of colliders) {
         collisions.push(...collider.boneEndCollisions(base, boneEnd));
     }
     return collisions;
 }
-
-function angleInRange(angle: number, start: number, end: number) {
+function angleInRange(angle, start, end) {
     const EPSILON = 1e-6;
     if (Math.abs(clipAngle(end - start)) < EPSILON) {
         return null;
@@ -33,15 +17,16 @@ function angleInRange(angle: number, start: number, end: number) {
             return (angle - start) / Math.max(end - start, EPSILON);
         }
         return null;
-    } else if (start < angle) {
+    }
+    else if (start < angle) {
         return (angle - start) / Math.max(end - start + TWO_PI, EPSILON);
-    } else if (angle < end) {
+    }
+    else if (angle < end) {
         return (angle - start + TWO_PI) / Math.max(end - start + TWO_PI, EPSILON);
     }
     return null;
 }
-
-function adjustForCollisions(desiredRotation: number, collisions: BoneEndCollision[]) {
+function adjustForCollisions(desiredRotation, collisions) {
     let direction = Math.sign(desiredRotation);
     for (let collision of collisions) {
         let t = angleInRange(desiredRotation, collision.start, collision.end);
@@ -56,13 +41,15 @@ function adjustForCollisions(desiredRotation: number, collisions: BoneEndCollisi
     }
     return desiredRotation;
 }
-
-class NewCircleCollider implements NewCollider {
-    constructor(public center: Vector, public radius: number) {}
-    boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
+class NewCircleCollider {
+    constructor(center, radius) {
+        this.center = center;
+        this.radius = radius;
+    }
+    boneEndCollisions(base, boneEnd) {
         let centerDistance = this.center.sub(base.start).norm;
-        let angleBetween = Math.acos((centerDistance*centerDistance + boneEnd.offset.norm2 -
-            this.radius*this.radius) / (2 * centerDistance * boneEnd.offset.norm));
+        let angleBetween = Math.acos((centerDistance * centerDistance + boneEnd.offset.norm2 -
+            this.radius * this.radius) / (2 * centerDistance * boneEnd.offset.norm));
         if (!Number.isNaN(angleBetween)) {
             let centerAngle = this.center.sub(base.start).angle;
             return [
@@ -74,17 +61,19 @@ class NewCircleCollider implements NewCollider {
         }
         return [];
     }
-    render(ctx: CanvasRenderingContext2D) {
+    render(ctx) {
         ctx.beginPath();
         ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
         ctx.closePath();
         ctx.stroke();
     }
 }
-
-class NewHalfPlaneCollider implements NewCollider {
-    constructor(public point: Vector, public normal: Vector) {}
-    boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
+class NewHalfPlaneCollider {
+    constructor(point, normal) {
+        this.point = point;
+        this.normal = normal;
+    }
+    boneEndCollisions(base, boneEnd) {
         let planeDistance = this.point.sub(base.start).dot(this.normal);
         let angleBetween = Math.acos(planeDistance / boneEnd.offset.norm);
         if (!Number.isNaN(angleBetween)) {
@@ -103,15 +92,16 @@ class NewHalfPlaneCollider implements NewCollider {
         }
         return [];
     }
-    render(ctx: CanvasRenderingContext2D) {
+    render(ctx) {
         const EPSILON = 1e-6;
         let ndotp = this.normal.dot(this.point);
-        let pointA: Vector | null = null;
-        let pointB: Vector | null = null;
+        let pointA = null;
+        let pointB = null;
         if (Math.abs(this.normal.x) > EPSILON) {
             pointA = new Vector(ndotp / this.normal.x, 0);
             pointB = new Vector((ndotp - this.normal.y * ctx.canvas.height) / this.normal.x, ctx.canvas.height);
-        } else if (Math.abs(this.normal.y) > EPSILON) {
+        }
+        else if (Math.abs(this.normal.y) > EPSILON) {
             pointA = new Vector(0, ndotp / this.normal.y);
             pointB = new Vector(ctx.canvas.width, (ndotp - this.normal.x * ctx.canvas.width) / this.normal.y);
         }
@@ -124,11 +114,9 @@ class NewHalfPlaneCollider implements NewCollider {
         }
     }
 }
-
-class NewConvexPolygonCollider implements NewCollider {
-    normals: Vector[];
-
-    constructor(public points: Vector[]) {
+class NewConvexPolygonCollider {
+    constructor(points) {
+        this.points = points;
         this.normals = [];
         for (let i = 0; i < points.length; i++) {
             let normal = this.points[(i + 1) % this.N].sub(this.points[i]).rotate90().normalized();
@@ -139,8 +127,8 @@ class NewConvexPolygonCollider implements NewCollider {
         }
     }
     get N() { return this.points.length; }
-    boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
-        let halfPlaneCollisions: BoneEndCollision[] = [];
+    boneEndCollisions(base, boneEnd) {
+        let halfPlaneCollisions = [];
         for (let i = 0; i < this.N; i++) {
             let halfPlaneSubCollider = new NewHalfPlaneCollider(this.points[i], this.normals[i]);
             let subCollisions = halfPlaneSubCollider.boneEndCollisions(base, boneEnd);
@@ -149,8 +137,9 @@ class NewConvexPolygonCollider implements NewCollider {
             }
             if (i == 0) {
                 halfPlaneCollisions = subCollisions;
-            } else {
-                let joined: BoneEndCollision[] = [];
+            }
+            else {
+                let joined = [];
                 for (let collision of halfPlaneCollisions) {
                     joined.push(...NewConvexPolygonCollider.joinCollisions(collision, subCollisions[0]));
                 }
@@ -159,7 +148,7 @@ class NewConvexPolygonCollider implements NewCollider {
         }
         return halfPlaneCollisions;
     }
-    render(ctx: CanvasRenderingContext2D) {
+    render(ctx) {
         ctx.beginPath();
         ctx.moveTo(this.points[this.N - 1].x, this.points[this.N - 1].y);
         for (let i = 0; i < this.N; i++) {
@@ -168,7 +157,7 @@ class NewConvexPolygonCollider implements NewCollider {
         ctx.closePath();
         ctx.stroke();
     }
-    static joinCollisions(a: BoneEndCollision, b: BoneEndCollision): BoneEndCollision[] {
+    static joinCollisions(a, b) {
         if (a.always) {
             return [b];
         }
@@ -193,7 +182,7 @@ class NewConvexPolygonCollider implements NewCollider {
             }
             // Case 2: a normal b split
             if (a.start < b.start && a.end > b.end) {
-                let joins: BoneEndCollision[] = [];
+                let joins = [];
                 if (a.start < b.end) {
                     joins.push({ start: a.start, end: b.end });
                 }
@@ -205,7 +194,7 @@ class NewConvexPolygonCollider implements NewCollider {
             return [a];
         }
         // Case 3: ab split
-        let joins: BoneEndCollision[] = [
+        let joins = [
             { start: Math.max(a.start, b.start), end: Math.min(a.end, b.end) }
         ];
         if (a.start < b.end) {
