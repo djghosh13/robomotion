@@ -1,16 +1,65 @@
-function boneCollide(bone, tracking, angleDiff, colliders) {
+function getCollisions(base, tracking, colliders) {
+    let collisions = [];
+    // Bone end
+    let boneEnd = { offset: tracking.end.sub(base.start) };
     for (let collider of colliders) {
-        angleDiff = collider.fixCollision(bone, tracking, angleDiff);
+        collisions.push(...collider.boneEndCollisions(base, boneEnd));
     }
-    return angleDiff;
+    return collisions;
+}
+function angleInRange(angle, start, end) {
+    const EPSILON = 1e-6;
+    if (Math.abs(clipAngle(end - start)) < EPSILON) {
+        return null;
+    }
+    if (start < end) {
+        if (start < angle && angle < end) {
+            return (angle - start) / Math.max(end - start, EPSILON);
+        }
+        return null;
+    }
+    else if (start < angle) {
+        return (angle - start) / Math.max(end - start + TWO_PI, EPSILON);
+    }
+    else if (angle < end) {
+        return (angle - start + TWO_PI) / Math.max(end - start + TWO_PI, EPSILON);
+    }
+    return null;
+}
+function adjustForCollisions(desiredRotation, collisions) {
+    let direction = Math.sign(desiredRotation);
+    for (let collision of collisions) {
+        let t = angleInRange(desiredRotation, collision.start, collision.end);
+        if (t != null) {
+            if (direction > 0 && t < 0.5) {
+                desiredRotation = collision.start;
+            }
+            if (direction < 0 && t > 0.5) {
+                desiredRotation = collision.end;
+            }
+        }
+    }
+    return desiredRotation;
 }
 class CircleCollider {
     constructor(center, radius) {
         this.center = center;
         this.radius = radius;
     }
-    fixCollision(base, tracking, angleDiff) {
-        return this.boneTangentCollision(base, tracking, this.boneEndCollision(base, tracking, angleDiff));
+    boneEndCollisions(base, boneEnd) {
+        let centerDistance = this.center.sub(base.start).norm;
+        let angleBetween = Math.acos((centerDistance * centerDistance + boneEnd.offset.norm2 -
+            this.radius * this.radius) / (2 * centerDistance * boneEnd.offset.norm));
+        if (!Number.isNaN(angleBetween)) {
+            let centerAngle = this.center.sub(base.start).angle;
+            return [
+                {
+                    start: clipAngle(centerAngle - angleBetween - boneEnd.offset.angle),
+                    end: clipAngle(centerAngle + angleBetween - boneEnd.offset.angle)
+                }
+            ];
+        }
+        return [];
     }
     render(ctx) {
         ctx.beginPath();
@@ -18,70 +67,30 @@ class CircleCollider {
         ctx.closePath();
         ctx.stroke();
     }
-    boneEndCollision(base, tracking, angleDiff) {
-        let currentAngle = tracking.end.sub(base.start).angle;
-        let centerAngle = this.center.sub(base.start).angle;
-        let A = tracking.end.sub(base.start).norm;
-        let B = this.center.sub(base.start).norm;
-        let tangentDiff = Math.acos((A * A + B * B - this.radius * this.radius) / (2 * A * B));
-        if (!Number.isNaN(tangentDiff)) {
-            let currentDiff = clipAngle(centerAngle - (currentAngle + angleDiff));
-            if (angleDiff > 0 && currentDiff > 0 && currentDiff < tangentDiff) {
-                angleDiff -= tangentDiff - currentDiff;
-            }
-            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < tangentDiff) {
-                angleDiff += tangentDiff - (-currentDiff);
-            }
-        }
-        return angleDiff;
-    }
-    boneTangentCollision(base, tracking, angleDiff) {
-        let tMin = tracking.start.sub(base.start).dot(tracking.end.sub(tracking.start).normalized());
-        let tMax = tMin + tracking.length;
-        let A = tracking.start.sub(base.start).cross(tracking.end.sub(tracking.start).normalized());
-        let B = this.center.sub(base.start).norm;
-        // Get potential solutions
-        let solutions = [];
-        for (let facing of [1, -1]) {
-            let t = Math.sqrt(B * B - (A * facing - this.radius) * (A * facing - this.radius));
-            if (!Number.isNaN(t)) {
-                if (tMin < t && t < tMax) {
-                    solutions.push(t);
-                }
-                if (tMin < -t && -t < tMax) {
-                    solutions.push(-t);
-                }
-            }
-        }
-        // Solve for collision directions
-        for (let t of solutions) {
-            let trackedPoint = tracking.start.add(tracking.end.sub(tracking.start).mul((t - tMin) / (tMax - tMin)));
-            let currentAngle = trackedPoint.sub(base.start).angle;
-            let centerAngle = this.center.sub(base.start).angle;
-            let A = trackedPoint.sub(base.start).norm;
-            let B = this.center.sub(base.start).norm;
-            let tangentDiff = Math.acos((A * A + B * B - this.radius * this.radius) / (2 * A * B));
-            if (!Number.isNaN(tangentDiff)) {
-                let currentDiff = clipAngle(centerAngle - (currentAngle + angleDiff));
-                if (angleDiff > 0 && currentDiff > 0 && currentDiff < tangentDiff) {
-                    angleDiff -= tangentDiff - currentDiff;
-                }
-                if (angleDiff < 0 && currentDiff < 0 && -currentDiff < tangentDiff) {
-                    angleDiff += tangentDiff - (-currentDiff);
-                }
-            }
-        }
-        return angleDiff;
-    }
 }
 class HalfPlaneCollider {
     constructor(point, normal) {
         this.point = point;
         this.normal = normal;
     }
-    fixCollision(base, tracking, angleDiff) {
-        // Only the end of a bone can hit the half-plane
-        return this.boneEndCollision(base, tracking, angleDiff);
+    boneEndCollisions(base, boneEnd) {
+        let planeDistance = this.point.sub(base.start).dot(this.normal);
+        let angleBetween = Math.acos(planeDistance / boneEnd.offset.norm);
+        if (!Number.isNaN(angleBetween)) {
+            let planeAngle = this.normal.angle;
+            return [
+                {
+                    start: clipAngle(planeAngle + angleBetween - boneEnd.offset.angle),
+                    end: clipAngle(planeAngle - angleBetween - boneEnd.offset.angle)
+                }
+            ];
+        }
+        if (planeDistance > 0) {
+            return [
+                { start: 0, end: 0, always: true }
+            ];
+        }
+        return [];
     }
     render(ctx) {
         const EPSILON = 1e-6;
@@ -104,98 +113,96 @@ class HalfPlaneCollider {
             ctx.stroke();
         }
     }
-    boneEndCollision(base, tracking, angleDiff) {
-        let currentAngle = tracking.end.sub(base.start).angle;
-        let planeAngle = clipAngle(this.normal.angle + Math.PI);
-        let distanceToPlane = base.start.sub(this.point).dot(this.normal);
-        let A = tracking.end.sub(base.start).norm;
-        let contactDiff = Math.acos(distanceToPlane / A);
-        if (!Number.isNaN(contactDiff)) {
-            let currentDiff = clipAngle(planeAngle - (currentAngle + angleDiff));
-            if (angleDiff > 0 && currentDiff > 0 && currentDiff < contactDiff) {
-                angleDiff -= contactDiff - currentDiff;
-            }
-            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < contactDiff) {
-                angleDiff += contactDiff - (-currentDiff);
-            }
-        }
-        return angleDiff;
-    }
 }
-class TriangleCollider {
-    constructor(pointA, pointB, pointC) {
-        this.points = [pointA, pointB, pointC, pointA, pointB];
+class ConvexPolygonCollider {
+    constructor(points) {
+        this.points = points;
+        this.normals = [];
+        for (let i = 0; i < points.length; i++) {
+            let normal = this.points[(i + 1) % this.N].sub(this.points[i]).rotate90().normalized();
+            if (normal.dot(this.points[(i + 2) % this.N].sub(this.points[(i + 1) % this.N])) > 0) {
+                normal = normal.mul(-1);
+            }
+            this.normals.push(normal);
+        }
     }
-    fixCollision(base, tracking, angleDiff) {
-        let proposed = [];
-        for (let i = 0; i < 3; i++) {
-            let halfPlane = new HalfPlaneCollider(this.points[i], this.points[i + 1].sub(this.points[i]).normalized().rotate90());
-            proposed.push(halfPlane.fixCollision(base, tracking, angleDiff));
+    get N() { return this.points.length; }
+    boneEndCollisions(base, boneEnd) {
+        let halfPlaneCollisions = [];
+        for (let i = 0; i < this.N; i++) {
+            let halfPlaneSubCollider = new HalfPlaneCollider(this.points[i], this.normals[i]);
+            let subCollisions = halfPlaneSubCollider.boneEndCollisions(base, boneEnd);
+            if (subCollisions.length == 0) {
+                return [];
+            }
+            if (i == 0) {
+                halfPlaneCollisions = subCollisions;
+            }
+            else {
+                let joined = [];
+                for (let collision of halfPlaneCollisions) {
+                    joined.push(...ConvexPolygonCollider.joinCollisions(collision, subCollisions[0]));
+                }
+                halfPlaneCollisions = joined;
+            }
         }
-        if (angleDiff > 0) {
-            angleDiff = Math.max(...proposed);
-        }
-        if (angleDiff < 0) {
-            angleDiff = Math.min(...proposed);
-        }
-        return angleDiff;
+        return halfPlaneCollisions;
     }
     render(ctx) {
         ctx.beginPath();
-        ctx.moveTo(this.points[0].x, this.points[0].y);
-        for (let i = 0; i < 3; i++) {
-            ctx.lineTo(this.points[i + 1].x, this.points[i + 1].y);
+        ctx.moveTo(this.points[this.N - 1].x, this.points[this.N - 1].y);
+        for (let i = 0; i < this.N; i++) {
+            ctx.lineTo(this.points[i].x, this.points[i].y);
         }
         ctx.closePath();
         ctx.stroke();
     }
-}
-class SegmentCollider {
-    constructor(pointA, pointB) {
-        this.pointA = pointA;
-        this.pointB = pointB;
-    }
-    fixCollision(base, tracking, angleDiff) {
-        // Only the end of a bone can hit the segment
-        return this.boneEndCollision(base, tracking, angleDiff);
-    }
-    render(ctx) {
-        ctx.beginPath();
-        ctx.moveTo(this.pointA.x, this.pointA.y);
-        ctx.lineTo(this.pointB.x, this.pointB.y);
-        ctx.closePath();
-        ctx.stroke();
-    }
-    boneEndCollision(base, tracking, angleDiff) {
-        let normal = this.pointB.sub(this.pointA).rotate90().normalized();
-        let A = tracking.end.sub(base.start).norm;
-        let solutions = [];
-        {
-            let uMin = this.pointA.sub(base.start).dot(this.pointB.sub(this.pointA).normalized());
-            let uMax = uMin + this.pointB.sub(this.pointA).norm;
-            let distanceToPlane = base.start.sub(this.pointA).dot(normal);
-            let u = Math.sqrt(A * A - distanceToPlane * distanceToPlane);
-            if (!Number.isNaN(u)) {
-                if (uMin < u && u < uMax) {
-                    solutions.push(u);
-                }
-                if (uMin < -u && -u < uMax) {
-                    solutions.push(-u);
-                }
-            }
+    static joinCollisions(a, b) {
+        if (a.always) {
+            return [b];
         }
-        let currentAngle = tracking.end.sub(base.start).angle;
-        let planeAngle = clipAngle(normal.angle + Math.PI);
-        let currentDiff = clipAngle(planeAngle - (currentAngle + angleDiff));
-        for (let u of solutions) {
-            let contactDiff = Math.asin(u / A);
-            if (angleDiff > 0 && currentDiff > 0 && currentDiff < contactDiff) {
-                angleDiff -= contactDiff - currentDiff;
-            }
-            if (angleDiff < 0 && currentDiff < 0 && -currentDiff < contactDiff) {
-                angleDiff += contactDiff - (-currentDiff);
-            }
+        if (b.always) {
+            return [a];
         }
-        return angleDiff;
+        // Reduce to 3 cases: ab normal, a normal b split, ab split
+        if (b.start < b.end) {
+            [a, b] = [b, a];
+        }
+        if (a.start < a.end) {
+            if (b.start < b.end) {
+                // Case 1: ab normal
+                let joinStart = Math.max(a.start, b.start);
+                let joinEnd = Math.min(a.end, b.end);
+                if (joinStart < joinEnd) {
+                    return [
+                        { start: joinStart, end: joinEnd }
+                    ];
+                }
+                return [];
+            }
+            // Case 2: a normal b split
+            if (a.start < b.start && a.end > b.end) {
+                let joins = [];
+                if (a.start < b.end) {
+                    joins.push({ start: a.start, end: b.end });
+                }
+                if (a.end > b.start) {
+                    joins.push({ start: b.start, end: a.end });
+                }
+                return joins;
+            }
+            return [a];
+        }
+        // Case 3: ab split
+        let joins = [
+            { start: Math.max(a.start, b.start), end: Math.min(a.end, b.end) }
+        ];
+        if (a.start < b.end) {
+            joins.push({ start: a.start, end: b.end });
+        }
+        if (b.start < a.end) {
+            joins.push({ start: b.start, end: a.end });
+        }
+        return joins;
     }
 }

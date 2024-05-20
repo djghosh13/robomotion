@@ -40,18 +40,26 @@ ARMATURE_PRESETS.set("slow_arm", buildArmGraphics({
         { length: 10, speed: 0.03, width: 6 }
     ]
 }));
+ARMATURE_PRESETS.set("retracting_arm", buildArmGraphics({
+    root: [ 300, 300 ],
+    bones: [
+        { length: 100, speed: 0.015, width: 15 },
+        { length: 75, speed: 0.03, width: 9 },
+        { length: 75, speed: 0.03, width: 9 },
+        { length: 65, speed: 0.05, width: 8 },
+        { length: 45, speed: 0.03, width: 6 },
+        { length: 45, speed: 0.03, width: 6 },
+        { length: 35, speed: 0.08, width: 10 },
+        { length: 10, speed: 0.03, width: 6 },
+        { length: 10, speed: 0.03, width: 6 }
+    ]
+}));
 
-var armature = ARMATURE_PRESETS.get("simple_joints")!;
-// var colliders: Collider[] = [
-//     new CircleCollider(new Vector(500, 300), 50),
-//     new HalfPlaneCollider(new Vector(200, 200), new Vector(50, 200).normalized()),
-//     // new SegmentCollider(new Vector(200, 200), new Vector(400, 150))
-//     // new TriangleCollider(new Vector(100, 200), new Vector(250, 100), new Vector(150, 50))
-// ];
-var colliders: NewCollider[] = [
-    new NewCircleCollider(new Vector(500, 300), 50),
+var armature = ARMATURE_PRESETS.get("retracting_arm")!;
+var colliders: Collider[] = [
+    new CircleCollider(new Vector(500, 300), 50),
     // new NewHalfPlaneCollider(new Vector(200, 200), new Vector(50, 200).normalized()),
-    new NewConvexPolygonCollider([
+    new ConvexPolygonCollider([
         new Vector(100, 200), new Vector(250, 100), new Vector(150, 50)
     ]),
 ];
@@ -61,6 +69,8 @@ var constraints: Constraint[] = [
 
 var run = true;
 var mouse = new Vector(100, 100);
+var retracted = true;
+var motionPoint = 0;
 
 
 function setup(ctx: CanvasRenderingContext2D) {
@@ -82,6 +92,10 @@ function background(ctx: CanvasRenderingContext2D, color: string) {
 
 function update(ctx: CanvasRenderingContext2D) {
     if (!run) return;
+    if (armature[0].parent != null) {
+        armature[0].parent.transform.localPosition = new Vector(300, 300 + 6 * Math.sin(motionPoint));
+        motionPoint = motionPoint + TWO_PI / 80;
+    }
     const MAX_ITER = 4;
     for (let i = 0; i < MAX_ITER; i++) {
         let moments = computeMoI(armature);
@@ -91,6 +105,27 @@ function update(ctx: CanvasRenderingContext2D) {
                 armature[j], mouse, armature[armature.length - 1],
                 moments[j], armature[j].rotationSpeed / MAX_ITER
             );
+            // TODO (for fun!)
+            if (retracted && armature == ARMATURE_PRESETS.get("retracting_arm")) {
+                if (j == 1 || j == 4) {
+                    desiredRotation = boneTrack(
+                        armature[j], armature[j - 1].start, armature[j],
+                        moments[j], 4 * armature[j].rotationSpeed / MAX_ITER
+                    );
+                }
+                if (j == 2 || j == 5) {
+                    let to180 = clipAngle(Math.PI - armature[j].angle);
+                    if (Math.abs(armature[j].angle) < Math.PI / 2) {
+                        let direction = Math.sign(armature[j - 1].angle);
+                        if (direction < 0) to180 = Math.PI - armature[j].angle;
+                        else to180 = -Math.PI - armature[j].angle;
+                    }
+                    let maxDiff = 4 * armature[j].rotationSpeed / MAX_ITER / moments[j];
+                    desiredRotation = (to180 > maxDiff) ? maxDiff
+                        : (to180 < -maxDiff) ? -maxDiff
+                        : to180;
+                }
+            }
             // Adjust for constraints
             desiredRotation = boneConstrain(armature[j], armature[armature.length - 1], desiredRotation, constraints);
             // Adjust for collisions
@@ -138,7 +173,8 @@ document.onreadystatechange = function(event) {
                     armature = result;
                 }
             }
-        })
+        });
+        selector.querySelector("option[value=retracting_arm]")?.setAttribute("selected", "selected");
         // Set up canvas
         let canvas = document.querySelector("#simulation");
         if (canvas instanceof HTMLCanvasElement) {
@@ -147,9 +183,15 @@ document.onreadystatechange = function(event) {
             canvas.addEventListener("mousemove", event => {
                 mouse = new Vector(event.offsetX, event.offsetY);
             });
-            canvas.addEventListener("click", event => {
-                run = !run;
-            });
+            canvas.addEventListener("mousedown", event => {
+                retracted = false;
+            })
+            canvas.addEventListener("mouseup", event => {
+                retracted = true;
+            })
+            // canvas.addEventListener("click", event => {
+            //     run = !run;
+            // });
         }
     }
 };
