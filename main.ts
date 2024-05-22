@@ -40,37 +40,73 @@ ARMATURE_PRESETS.set("slow_arm", buildArmGraphics({
         { length: 10, speed: 0.03, width: 6 }
     ]
 }));
-ARMATURE_PRESETS.set("retracting_arm", buildArmGraphics({
-    root: [ 300, 300 ],
-    bones: [
-        { length: 100, speed: 0.015, width: 15 },
-        { length: 75, speed: 0.03, width: 9 },
-        { length: 75, speed: 0.03, width: 9 },
-        { length: 65, speed: 0.05, width: 8 },
-        { length: 45, speed: 0.03, width: 6 },
-        { length: 45, speed: 0.03, width: 6 },
-        { length: 35, speed: 0.08, width: 10 },
-        { length: 10, speed: 0.03, width: 6 },
-        { length: 10, speed: 0.03, width: 6 }
-    ]
-}));
 
-var armature = ARMATURE_PRESETS.get("retracting_arm")!;
+var armature = ARMATURE_PRESETS.get("slow_arm")!;
 var colliders: Collider[] = [
     new CircleCollider(new Vector(500, 300), 50),
-    // new NewHalfPlaneCollider(new Vector(200, 200), new Vector(50, 200).normalized()),
     new ConvexPolygonCollider([
         new Vector(100, 200), new Vector(250, 100), new Vector(150, 50)
     ]),
 ];
-var constraints: Constraint[] = [
-    // new CircleConstraint(new Vector(250, 300), 200)
-];
+
+var game = new Game();
+game.armature = ARMATURE_PRESETS.get("slow_arm")!;
+game.components = [];
+game.components.push(
+    new WireLight([
+        new Vector(150, 510), new Vector(150, 540),
+        new Vector(200, 540), new Vector(200, 170),
+        new Vector(180, 170)
+    ]),
+    new WireLight([
+        new Vector(250, 510), new Vector(250, 590)
+    ]),
+    new WireLight([
+        new Vector(350, 510), new Vector(350, 540),
+        new Vector(500, 540), new Vector(500, 310)
+    ]),
+    // Obstacles
+    new SimpleObstacle(new CircleCollider(new Vector(500, 300), 50)),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(80, 200), new Vector(230, 100), new Vector(130, 50)
+    ])),
+    // Interactibles
+    new Button(new Vector(150, 500), new Vector(0, -1), 1),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(125, 500), new Vector(175, 500),
+        new Vector(175, 510), new Vector(125, 510)
+    ])),
+    new Button(new Vector(250, 500), new Vector(0, -1), 5),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(225, 500), new Vector(275, 500),
+        new Vector(275, 510), new Vector(225, 510)
+    ])),
+    new Button(new Vector(350, 500), new Vector(0, -1), 2, 60, 30),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(315, 500), new Vector(385, 500),
+        new Vector(385, 510), new Vector(315, 510)
+    ])),
+    // Aesthetics
+    new Light(new Vector(170, 170)),
+    new Light(new Vector(250, 600)),
+    new Light(new Vector(500, 300)),
+);
+
+for (let i = 0; i < 3; i++) {
+    let button = game.components[2*i + 5];
+    let wireLight = game.components[i];
+    let light = game.components[i + 11];
+    if (iofIOutputter(button) && iofIInputter(wireLight) && iofIInputter(light)) {
+        game.components.push(
+            new SimpleCircuit(button, wireLight),
+            new SimpleCircuit(button, light)
+        );
+    }
+}
 
 var run = true;
 var mouse = new Vector(100, 100);
-var retracted = true;
-var motionPoint = 0;
+var action = false;
 
 
 function setup(ctx: CanvasRenderingContext2D) {
@@ -82,7 +118,6 @@ function setup(ctx: CanvasRenderingContext2D) {
     background(ctx, "black");
 }
 
-
 function background(ctx: CanvasRenderingContext2D, color: string) {
     let fill = ctx.fillStyle;
     ctx.fillStyle = color;
@@ -92,67 +127,8 @@ function background(ctx: CanvasRenderingContext2D, color: string) {
 
 function update(ctx: CanvasRenderingContext2D) {
     if (!run) return;
-    if (armature[0].parent != null) {
-        armature[0].parent.transform.localPosition = new Vector(300, 300 + 6 * Math.sin(motionPoint));
-        motionPoint = motionPoint + TWO_PI / 80;
-    }
-    const MAX_ITER = 4;
-    for (let i = 0; i < MAX_ITER; i++) {
-        let moments = computeMoI(armature);
-        for (let j = 0; j < armature.length; j++) {
-            // Compute desired trajectory
-            let desiredRotation = boneTrack(
-                armature[j], mouse, armature[armature.length - 1],
-                moments[j], armature[j].rotationSpeed / MAX_ITER
-            );
-            // TODO (for fun!)
-            if (retracted && armature == ARMATURE_PRESETS.get("retracting_arm")) {
-                if (j == 1 || j == 4) {
-                    desiredRotation = boneTrack(
-                        armature[j], armature[j - 1].start, armature[j],
-                        moments[j], 4 * armature[j].rotationSpeed / MAX_ITER
-                    );
-                }
-                if (j == 2 || j == 5) {
-                    let to180 = clipAngle(Math.PI - armature[j].angle);
-                    if (Math.abs(armature[j].angle) < Math.PI / 2) {
-                        let direction = Math.sign(armature[j - 1].angle);
-                        if (direction < 0) to180 = Math.PI - armature[j].angle;
-                        else to180 = -Math.PI - armature[j].angle;
-                    }
-                    let maxDiff = 4 * armature[j].rotationSpeed / MAX_ITER / moments[j];
-                    desiredRotation = (to180 > maxDiff) ? maxDiff
-                        : (to180 < -maxDiff) ? -maxDiff
-                        : to180;
-                }
-            }
-            // Adjust for constraints
-            desiredRotation = boneConstrain(armature[j], armature[armature.length - 1], desiredRotation, constraints);
-            // Adjust for collisions
-            for (let k = j; k < armature.length; k++) {
-                let collisions = getCollisions(armature[j], armature[k], colliders);
-                desiredRotation = adjustForCollisions(desiredRotation, collisions);
-            }
-            armature[j].angle += desiredRotation;
-        }
-    }
-    // Draw armature
-    setup(ctx);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#00ff8c";
-    for (let i = 0; i < constraints.length; i++) {
-        constraints[i].render(ctx);
-    }
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#008cff";
-    for (let i = 0; i < colliders.length; i++) {
-        colliders[i].render(ctx);
-    }
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "white";
-    for (let i = 0; i < armature.length; i++) {
-        armature[i].render(ctx);
-    }
+    game.update();
+    game.render();
 }
 
 
@@ -170,7 +146,7 @@ document.onreadystatechange = function(event) {
             if (event.target instanceof HTMLSelectElement) {
                 let result = ARMATURE_PRESETS.get(event.target.value);
                 if (result != null) {
-                    armature = result;
+                    game.armature = result;
                 }
             }
         });
@@ -179,19 +155,17 @@ document.onreadystatechange = function(event) {
         let canvas = document.querySelector("#simulation");
         if (canvas instanceof HTMLCanvasElement) {
             let context = canvas.getContext("2d");
+            game.ctx = context!;
             window.setInterval(update, FRAME_INTERVAL, context);
             canvas.addEventListener("mousemove", event => {
                 mouse = new Vector(event.offsetX, event.offsetY);
             });
             canvas.addEventListener("mousedown", event => {
-                retracted = false;
+                action = true;
             })
             canvas.addEventListener("mouseup", event => {
-                retracted = true;
+                action = false;
             })
-            // canvas.addEventListener("click", event => {
-            //     run = !run;
-            // });
         }
     }
 };

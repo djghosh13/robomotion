@@ -15,6 +15,7 @@ class BoneGraphics extends BonePhysics {
         ctx.lineTo(endRight.x, endRight.y);
         ctx.lineTo(startRight.x, startRight.y);
         ctx.closePath();
+        ctx.fill();
         ctx.stroke();
     }
 }
