@@ -1,3 +1,14 @@
+var CollisionLayer;
+(function (CollisionLayer) {
+    CollisionLayer[CollisionLayer["ANY_BONE"] = 0] = "ANY_BONE";
+    CollisionLayer[CollisionLayer["END_BONE"] = 1] = "END_BONE";
+})(CollisionLayer || (CollisionLayer = {}));
+;
+class Collider {
+    constructor(layer = CollisionLayer.ANY_BONE) {
+        this.layer = layer;
+    }
+}
 function getCollisions(base, tracking, colliders) {
     let collisions = [];
     // Bone end
@@ -41,8 +52,18 @@ function adjustForCollisions(desiredRotation, collisions) {
     }
     return desiredRotation;
 }
-class CircleCollider {
-    constructor(center, radius) {
+class NullCollider extends Collider {
+    constructor() {
+        super(CollisionLayer.END_BONE);
+    }
+    boneEndCollisions(base, boneEnd) {
+        return [];
+    }
+    render(ctx) { }
+}
+class CircleCollider extends Collider {
+    constructor(center, radius, layer) {
+        super(layer);
         this.center = center;
         this.radius = radius;
     }
@@ -59,6 +80,9 @@ class CircleCollider {
                 }
             ];
         }
+        if (centerDistance + boneEnd.offset.norm < this.radius) {
+            return [{ start: 0, end: 0, always: true }];
+        }
         return [];
     }
     render(ctx) {
@@ -68,8 +92,33 @@ class CircleCollider {
         ctx.stroke();
     }
 }
-class HalfPlaneCollider {
-    constructor(point, normal) {
+class InvertedCircleCollider extends Collider {
+    constructor(center, radius, layer) {
+        super(layer);
+        this.center = center;
+        this.radius = radius;
+    }
+    boneEndCollisions(base, boneEnd) {
+        let antiCollisions = new CircleCollider(this.center, this.radius).boneEndCollisions(base, boneEnd);
+        if (antiCollisions.length == 0) {
+            return [{ start: 0, end: 0, always: true }];
+        }
+        let antiCollision = antiCollisions[0];
+        if (antiCollision.always) {
+            return [];
+        }
+        return [{ start: antiCollision.end, end: antiCollision.start }];
+    }
+    render(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+class HalfPlaneCollider extends Collider {
+    constructor(point, normal, layer) {
+        super(layer);
         this.point = point;
         this.normal = normal;
     }
@@ -86,9 +135,7 @@ class HalfPlaneCollider {
             ];
         }
         if (planeDistance > 0) {
-            return [
-                { start: 0, end: 0, always: true }
-            ];
+            return [{ start: 0, end: 0, always: true }];
         }
         return [];
     }
@@ -114,8 +161,9 @@ class HalfPlaneCollider {
         }
     }
 }
-class ConvexPolygonCollider {
-    constructor(points) {
+class ConvexPolygonCollider extends Collider {
+    constructor(points, layer) {
+        super(layer);
         this.points = points;
         this.normals = [];
         for (let i = 0; i < points.length; i++) {

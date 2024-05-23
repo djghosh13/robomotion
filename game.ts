@@ -8,10 +8,15 @@ class Game {
     }
     update() {
         // Get all colliders
-        let colliders: Collider[] = [];
+        let anyColliders: Collider[] = [];
+        let endColliders: Collider[] = [];
         for (let comp of this.components) {
             if (iofICollidable(comp)) {
-                colliders.push(comp.collider);
+                let collider = comp.collider;
+                if (collider.layer == CollisionLayer.ANY_BONE) {
+                    anyColliders.push(comp.collider);
+                }
+                endColliders.push(comp.collider);
             }
         }
         // Compute movements
@@ -26,7 +31,10 @@ class Game {
                 );
                 // Adjust for collisions
                 for (let k = j; k < this.armature.length; k++) {
-                    let collisions = getCollisions(this.armature[j], this.armature[k], colliders);
+                    let collisions = getCollisions(
+                        this.armature[j], this.armature[k],
+                        (k == this.armature.length - 1) ? endColliders : anyColliders
+                    );
                     desiredRotation = adjustForCollisions(desiredRotation, collisions);
                 }
                 this.armature[j].angle += desiredRotation;

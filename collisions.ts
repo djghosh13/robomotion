@@ -7,9 +7,15 @@ type BoneEndCollision = {
     always?: boolean;
 };
 
-interface Collider {
-    boneEndCollisions(base: Bone, boneEnd: BoneEndData): BoneEndCollision[];
-    render(ctx: CanvasRenderingContext2D): void;
+enum CollisionLayer {
+    ANY_BONE,
+    END_BONE
+};
+
+abstract class Collider {
+    constructor(public layer: CollisionLayer = CollisionLayer.ANY_BONE) { }
+    abstract boneEndCollisions(base: Bone, boneEnd: BoneEndData): BoneEndCollision[];
+    abstract render(ctx: CanvasRenderingContext2D): void;
 }
 
 
@@ -57,8 +63,22 @@ function adjustForCollisions(desiredRotation: number, collisions: BoneEndCollisi
     return desiredRotation;
 }
 
-class CircleCollider implements Collider {
-    constructor(public center: Vector, public radius: number) {}
+
+class NullCollider extends Collider {
+    constructor() {
+        super(CollisionLayer.END_BONE);
+    }
+    boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
+        return [];
+    }
+    render(ctx: CanvasRenderingContext2D) { }
+}
+
+
+class CircleCollider extends Collider {
+    constructor(public center: Vector, public radius: number, layer?: CollisionLayer) {
+        super(layer);
+    }
     boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
         let centerDistance = this.center.sub(base.start).norm;
         let angleBetween = Math.acos((centerDistance*centerDistance + boneEnd.offset.norm2 -
@@ -72,6 +92,9 @@ class CircleCollider implements Collider {
                 }
             ];
         }
+        if (centerDistance + boneEnd.offset.norm < this.radius) {
+            return [{ start: 0, end: 0, always: true }];
+        }
         return [];
     }
     render(ctx: CanvasRenderingContext2D) {
@@ -82,8 +105,35 @@ class CircleCollider implements Collider {
     }
 }
 
-class HalfPlaneCollider implements Collider {
-    constructor(public point: Vector, public normal: Vector) {}
+
+class InvertedCircleCollider extends Collider {
+    constructor(public center: Vector, public radius: number, layer?: CollisionLayer) {
+        super(layer);
+    }
+    boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
+        let antiCollisions = new CircleCollider(this.center, this.radius).boneEndCollisions(base, boneEnd);
+        if (antiCollisions.length == 0) {
+            return [{ start: 0, end: 0, always: true }];
+        }
+        let antiCollision: BoneEndCollision = antiCollisions[0];
+        if (antiCollision.always) {
+            return [];
+        }
+        return [{ start: antiCollision.end, end: antiCollision.start }];
+    }
+    render(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+
+
+class HalfPlaneCollider extends Collider {
+    constructor(public point: Vector, public normal: Vector, layer?: CollisionLayer) {
+        super(layer);
+    }
     boneEndCollisions(base: Bone, boneEnd: BoneEndData) {
         let planeDistance = this.point.sub(base.start).dot(this.normal);
         let angleBetween = Math.acos(planeDistance / boneEnd.offset.norm);
@@ -97,9 +147,7 @@ class HalfPlaneCollider implements Collider {
             ];
         }
         if (planeDistance > 0) {
-            return [
-                { start: 0, end: 0, always: true }
-            ];
+            return [{ start: 0, end: 0, always: true }];
         }
         return [];
     }
@@ -125,10 +173,12 @@ class HalfPlaneCollider implements Collider {
     }
 }
 
-class ConvexPolygonCollider implements Collider {
+
+class ConvexPolygonCollider extends Collider {
     normals: Vector[];
 
-    constructor(public points: Vector[]) {
+    constructor(public points: Vector[], layer?: CollisionLayer) {
+        super(layer);
         this.normals = [];
         for (let i = 0; i < points.length; i++) {
             let normal = this.points[(i + 1) % this.N].sub(this.points[i]).rotate90().normalized();

@@ -62,10 +62,7 @@ class Button implements IComponent, ICollidable, IOutputter {
     render(ctx: CanvasRenderingContext2D): void {
         ctx.beginPath();
         ctx.lineWidth = 3;
-        ctx.strokeStyle = "#36f";
-        if (this.output == 1) {
-            ctx.strokeStyle = "#4af";
-        }
+        ctx.strokeStyle = (this.output == 1) ? "#4af" : "#36f";
         let [brc, frc, flc, blc] = this.cornerPositions(this.pressed);
         ctx.moveTo(brc.x, brc.y);
         ctx.lineTo(frc.x, frc.y);
@@ -94,73 +91,97 @@ class Button implements IComponent, ICollidable, IOutputter {
 }
 
 
-class SimpleCircuit implements IComponent {
-    constructor(public activator: IOutputter, public responder: IInputter) { }
-    update(game: Game): void {
-        this.responder.input = this.activator.output;
-    }
-    render(ctx: CanvasRenderingContext2D) { }
-}
+class ChainPull implements IComponent, ICollidable, IOutputter {
+    public held: boolean;
+    public endPosition: Vector;
 
-class Light implements IComponent, IInputter {
-    constructor(public position: Vector, public on: boolean = false) { }
-    update(game: Game) { }
-    render(ctx: CanvasRenderingContext2D) {
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "#125221";
-        if (this.on) {
-            ctx.strokeStyle = "#22ff55";
-            ctx.beginPath();
-            ctx.arc(this.position.x, this.position.y, 4, 0, TWO_PI);
-            ctx.stroke();
-            ctx.closePath();
+    constructor(public position: Vector, public speed: number = 1,
+            public length: number = 80, public maxLength: number = 160) {
+        this.held = false;
+        this.endPosition = this.position.add(new Vector(0, this.length));
+    }
+    update(game: Game) {
+        this.held = action && game.robotArm.end.sub(this.endPosition).norm < 20;
+        if (this.held) {
+            this.endPosition = game.robotArm.end;
+        } else {
+            // TODO complete
+            this.endPosition =this.position.add(new Vector(0, this.length));
         }
+    }
+    render(ctx: CanvasRenderingContext2D): void {
+        const NLINKS = 10;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = (this.output == 1) ? "#4af" : "#36f";
         ctx.beginPath();
-        ctx.arc(this.position.x, this.position.y, 10, 0, TWO_PI);
+        ctx.moveTo(this.position.x, this.position.y);
+        for (let point of this.solveCatenary(NLINKS)) {
+            ctx.lineTo(point.x, point.y);
+        }
+        ctx.lineTo(this.endPosition.x, this.endPosition.y);
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(this.endPosition.x, this.endPosition.y, 10, 0, TWO_PI);
+        ctx.fill();
         ctx.stroke();
         ctx.closePath();
     }
-    set input(value: number) {
-        this.on = (value == 1);
+    get collider() {
+        if (this.held) {
+            let pulled = Math.min(
+                Math.max(
+                    this.endPosition.sub(this.position).norm,
+                    this.length
+                ) + (this.maxLength - this.length) * this.speed * FRAME_INTERVAL / 1000,
+                this.maxLength
+            );
+            return new InvertedCircleCollider(this.position, pulled, CollisionLayer.END_BONE);
+        }
+        return new NullCollider();
     }
-}
-
-class WireLight implements IComponent, IInputter {
-    constructor(public points: Vector[], public input: number = 0) { }
-    update(game: Game) { }
-    render(ctx: CanvasRenderingContext2D) {
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "#125221";
-        ctx.beginPath();
-        ctx.moveTo(this.points[0].x, this.points[0].y);
-        for (let i = 0; i < this.points.length - 1; i++) {
-            ctx.lineTo(this.points[i + 1].x, this.points[i + 1].y);
+    get output() {
+        return Math.min(
+            Math.max(
+                (this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length),
+                0
+            ),
+            0.95
+        ) / 0.95;
+    }
+    solveCatenary(n: number) {
+        // From https://math.stackexchange.com/questions/3557767/how-to-construct-a-catenary-of-a-specified-length-through-two-specified-points
+        const EPSILON = 1e-2;
+        let nPos = this.position.mul(-1);
+        let nEndPos = this.endPosition.mul(-1);
+        let delta = nEndPos.sub(nPos);
+        let step = delta.x / n;
+        delta = new Vector(Math.abs(delta.x), delta.y);
+        let mean = nPos.add(delta.mul(0.5));
+        if (Math.abs(delta.x) < EPSILON) {
+            // Vertical line, find bottom
+            return [new Vector(this.position.x, this.position.y + (this.length - delta.y)/2)];
         }
-        ctx.stroke();
-        ctx.closePath();
-        //
-        let dists: number[] = [];
-        for (let i = 0; i < this.points.length - 1; i++) {
-            dists.push(this.points[i + 1].sub(this.points[i]).norm);
+        let r = Math.sqrt(this.length*this.length - delta.y*delta.y) / Math.abs(delta.x);
+        if (Number.isNaN(r)) {
+            return [];
         }
-        let totalDist = dists.reduce((a, x) => a + x) * this.input;
-        // Draw
-        ctx.strokeStyle = "#169733";
-        if (this.input == 1) {
-            ctx.strokeStyle = "#22ff55";
+        // Newton's method for A
+        let A = (r < 3) ? Math.sqrt(6 * (r - 1)) : Math.log(2*r) + Math.log(Math.log(2*r));
+        for (let i = 0; i < 5; i++) {
+            A -= (Math.sinh(A) - r*A) / (Math.cosh(A) - r);
         }
-        ctx.beginPath();
-        ctx.moveTo(this.points[0].x, this.points[0].y);
-        for (let i = 0; i < dists.length; i++) {
-            if (totalDist < dists[i]) {
-                let middle = this.points[i].add(this.points[i + 1].sub(this.points[i]).mul(totalDist / dists[i]));
-                ctx.lineTo(middle.x, middle.y);
-                break;
-            }
-            totalDist -= dists[i];
-            ctx.lineTo(this.points[i + 1].x, this.points[i + 1].y);
+        // Coefficients
+        let a = delta.x / (2*A);
+        let b = mean.x - a * Math.atanh(delta.y / this.length);
+        let c = mean.y - this.length / (2*Math.tanh(A));
+        let points: Vector[] = [];
+        for (let i = 1; i < n; i++) {
+            let x = nPos.x + i*step;
+            let y = a * Math.cosh((nPos.x + i*delta.x/n - b) / a) + c;
+            points.push(new Vector(x, y).mul(-1));
         }
-        ctx.stroke();
-        ctx.closePath();
+        return points;
     }
 }
