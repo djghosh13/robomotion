@@ -27,17 +27,42 @@ class Game {
                 // Compute desired trajectory
                 let desiredRotation = boneTrack(
                     this.armature[j], mouse, this.armature[this.armature.length - 1],
-                    moments[j], this.armature[j].rotationSpeed / MAX_ITER
+                    this.armature[j].rotationSpeed / moments[j] / MAX_ITER
                 );
-                // Adjust for collisions
-                for (let k = j; k < this.armature.length; k++) {
-                    let collisions = getCollisions(
-                        this.armature[j], this.armature[k],
-                        (k == this.armature.length - 1) ? endColliders : anyColliders
-                    );
-                    desiredRotation = adjustForCollisions(desiredRotation, collisions);
-                }
                 this.armature[j].angle += desiredRotation;
+                // Prevent collisions
+                const MAX_FIXES = 4;
+                let fixes = 0;
+                collisionCheck: for (let k = j; k < this.armature.length; k++) {
+                    let colliders = (k == this.armature.length - 1) ? endColliders : anyColliders;
+                    while (getCollision(this.armature[k], colliders) != null) {
+                        fixes++;
+                        desiredRotation /= 2;
+                        this.armature[j].angle -= desiredRotation;
+                        if (fixes > MAX_FIXES) {
+                            this.armature[j].angle -= desiredRotation;
+                            break collisionCheck;
+                        }
+                    }
+                }
+            }
+            // Fix existing collisions
+            for (let k = 0; k < this.armature.length; k++) {
+                let bone = this.armature[k];
+                let colliders = (k == this.armature.length - 1) ? endColliders : anyColliders;
+                let collision = getCollision(bone, colliders);
+                if (collision != null) {
+                    let boneAxis = bone.end.sub(bone.start).normalized();
+                    let t = collision.origin.sub(bone.start).dot(boneAxis) / bone.length;
+                    // Compute desired trajectory
+                    for (let j = 0; j <= k; j++) {
+                        let desiredFix = boneTrack(
+                            this.armature[j], collision.origin.add(collision.offset), bone,
+                            Number.POSITIVE_INFINITY, t
+                        );
+                        this.armature[j].angle += desiredFix;
+                    }
+                }
             }
         }
         // Update components

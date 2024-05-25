@@ -16,11 +16,11 @@ function computeMoI(armature) {
     }
     return moments;
 }
-function boneTrack(bone, target, tracking, moment, rotationSpeed) {
+function boneTrack(bone, target, tracking, maxRotation, trackingT = 1) {
     // Track
-    let diff = clipAngle(target.sub(bone.start).angle - tracking.end.sub(bone.start).angle);
-    let maxDiff = rotationSpeed / moment;
-    diff = (diff > maxDiff) ? maxDiff : (diff < -maxDiff) ? -maxDiff : diff;
+    let trackedPoint = tracking.start.add(tracking.end.sub(tracking.start).mul(trackingT));
+    let diff = clipAngle(target.sub(bone.start).angle - trackedPoint.sub(bone.start).angle);
+    diff = (diff > maxRotation) ? maxRotation : (diff < -maxRotation) ? -maxRotation : diff;
     return clipAngle(diff);
 }
 function lerpVector(start, end, value) {

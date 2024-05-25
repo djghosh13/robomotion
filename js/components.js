@@ -108,7 +108,7 @@ class ChainPull {
     get collider() {
         if (this.held) {
             let pulled = Math.min(Math.max(this.endPosition.sub(this.position).norm, this.length) + (this.maxLength - this.length) * this.speed * FRAME_INTERVAL / 1000, this.maxLength);
-            return new InvertedCircleCollider(this.position, pulled, CollisionLayer.END_BONE);
+            return new CircleConstraint(this.position, pulled, CollisionLayer.END_BONE);
         }
         return new NullCollider();
     }

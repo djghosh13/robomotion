@@ -9,56 +9,32 @@ class Collider {
         this.layer = layer;
     }
 }
-function getCollisions(base, tracking, colliders) {
-    let collisions = [];
-    // Bone end
-    let boneEnd = { offset: tracking.end.sub(base.start) };
+function getCollision(bone, colliders) {
+    // Simple collision check
     for (let collider of colliders) {
-        collisions.push(...collider.boneEndCollisions(base, boneEnd));
-    }
-    return collisions;
-}
-function angleInRange(angle, start, end) {
-    const EPSILON = 1e-6;
-    if (Math.abs(clipAngle(end - start)) < EPSILON) {
-        return null;
-    }
-    if (start < end) {
-        if (start < angle && angle < end) {
-            return (angle - start) / Math.max(end - start, EPSILON);
+        let collision = collider.getCollision(bone);
+        if (collision != null) {
+            return collision;
         }
-        return null;
-    }
-    else if (start < angle) {
-        return (angle - start) / Math.max(end - start + TWO_PI, EPSILON);
-    }
-    else if (angle < end) {
-        return (angle - start + TWO_PI) / Math.max(end - start + TWO_PI, EPSILON);
     }
     return null;
 }
-function adjustForCollisions(desiredRotation, collisions) {
-    let direction = Math.sign(desiredRotation);
-    for (let collision of collisions) {
-        let t = angleInRange(desiredRotation, collision.start, collision.end);
-        if (t != null) {
-            if (direction > 0 && t < 0.5) {
-                desiredRotation = collision.start;
-            }
-            if (direction < 0 && t > 0.5) {
-                desiredRotation = collision.end;
-            }
+function fixCollisions(base, tracking, colliders) {
+    // Collision adjustment
+    // TODO
+    for (let collider of colliders) {
+        let collision = collider.getCollision(tracking);
+        if (collision != null) {
+            return true;
         }
     }
-    return desiredRotation;
+    return false;
 }
 class NullCollider extends Collider {
     constructor() {
         super(CollisionLayer.END_BONE);
     }
-    boneEndCollisions(base, boneEnd) {
-        return [];
-    }
+    getCollision(bone) { return null; }
     render(ctx) { }
 }
 class CircleCollider extends Collider {
@@ -67,23 +43,33 @@ class CircleCollider extends Collider {
         this.center = center;
         this.radius = radius;
     }
-    boneEndCollisions(base, boneEnd) {
-        let centerDistance = this.center.sub(base.start).norm;
-        let angleBetween = Math.acos((centerDistance * centerDistance + boneEnd.offset.norm2 -
-            this.radius * this.radius) / (2 * centerDistance * boneEnd.offset.norm));
-        if (!Number.isNaN(angleBetween)) {
-            let centerAngle = this.center.sub(base.start).angle;
-            return [
-                {
-                    start: clipAngle(centerAngle - angleBetween - boneEnd.offset.angle),
-                    end: clipAngle(centerAngle + angleBetween - boneEnd.offset.angle)
-                }
-            ];
+    getCollision(bone) {
+        const EPSILON = 1e-6;
+        // Farthest in point is either end or point along line closest to the center
+        let closestPoint;
+        let boneAxis = bone.end.sub(bone.start).normalized();
+        {
+            let tMin = bone.start.dot(boneAxis);
+            let tMax = bone.end.dot(boneAxis);
+            let t = Math.min(Math.max(this.center.dot(boneAxis), tMin), tMax);
+            closestPoint = bone.start.add(boneAxis.mul(t - tMin));
         }
-        if (centerDistance + boneEnd.offset.norm < this.radius) {
-            return [{ start: 0, end: 0, always: true }];
+        let distance = closestPoint.sub(this.center).norm;
+        if (distance < EPSILON) {
+            // No singular direction, return orthogonal to bone
+            return {
+                origin: closestPoint,
+                offset: boneAxis.rotate90().mul(this.radius)
+            };
         }
-        return [];
+        if (distance < this.radius) {
+            // Move outwards by radius - distance
+            return {
+                origin: closestPoint,
+                offset: closestPoint.sub(this.center).mul((this.radius - distance) / distance)
+            };
+        }
+        return null;
     }
     render(ctx) {
         ctx.beginPath();
@@ -92,22 +78,15 @@ class CircleCollider extends Collider {
         ctx.stroke();
     }
 }
-class InvertedCircleCollider extends Collider {
+class CircleConstraint extends Collider {
     constructor(center, radius, layer) {
         super(layer);
         this.center = center;
         this.radius = radius;
     }
-    boneEndCollisions(base, boneEnd) {
-        let antiCollisions = new CircleCollider(this.center, this.radius).boneEndCollisions(base, boneEnd);
-        if (antiCollisions.length == 0) {
-            return [{ start: 0, end: 0, always: true }];
-        }
-        let antiCollision = antiCollisions[0];
-        if (antiCollision.always) {
-            return [];
-        }
-        return [{ start: antiCollision.end, end: antiCollision.start }];
+    getCollision(bone) {
+        // TODO
+        return null;
     }
     render(ctx) {
         ctx.beginPath();
@@ -122,22 +101,16 @@ class HalfPlaneCollider extends Collider {
         this.point = point;
         this.normal = normal;
     }
-    boneEndCollisions(base, boneEnd) {
-        let planeDistance = this.point.sub(base.start).dot(this.normal);
-        let angleBetween = Math.acos(planeDistance / boneEnd.offset.norm);
-        if (!Number.isNaN(angleBetween)) {
-            let planeAngle = this.normal.angle;
-            return [
-                {
-                    start: clipAngle(planeAngle + angleBetween - boneEnd.offset.angle),
-                    end: clipAngle(planeAngle - angleBetween - boneEnd.offset.angle)
-                }
-            ];
+    getCollision(bone) {
+        let closestPoint = bone.end.sub(bone.start).dot(this.normal) > 0 ? bone.start : bone.end;
+        let distance = closestPoint.sub(this.point).dot(this.normal);
+        if (distance < 0) {
+            return {
+                origin: closestPoint,
+                offset: this.normal.mul(-distance)
+            };
         }
-        if (planeDistance > 0) {
-            return [{ start: 0, end: 0, always: true }];
-        }
-        return [];
+        return null;
     }
     render(ctx) {
         const EPSILON = 1e-6;
@@ -175,26 +148,22 @@ class ConvexPolygonCollider extends Collider {
         }
     }
     get N() { return this.points.length; }
-    boneEndCollisions(base, boneEnd) {
-        let halfPlaneCollisions = [];
-        for (let i = 0; i < this.N; i++) {
-            let halfPlaneSubCollider = new HalfPlaneCollider(this.points[i], this.normals[i]);
-            let subCollisions = halfPlaneSubCollider.boneEndCollisions(base, boneEnd);
-            if (subCollisions.length == 0) {
-                return [];
-            }
-            if (i == 0) {
-                halfPlaneCollisions = subCollisions;
-            }
-            else {
-                let joined = [];
-                for (let collision of halfPlaneCollisions) {
-                    joined.push(...ConvexPolygonCollider.joinCollisions(collision, subCollisions[0]));
-                }
-                halfPlaneCollisions = joined;
+    getCollision(bone) {
+        // Get endpoint (normal to polygon side) fixes
+        let startCollision = this.getEndpointCollision(bone.start, bone.end.sub(bone.start));
+        let endCollision = this.getEndpointCollision(bone.end, bone.start.sub(bone.end));
+        // Get side (normal to bone) fix
+        let sideCollision = this.getSideCollision(bone);
+        // Return direction with least distance
+        let bestDistance = Number.POSITIVE_INFINITY;
+        let bestCollision = null;
+        for (let collision of [startCollision, endCollision, sideCollision]) {
+            if (collision != null && collision.offset.norm < bestDistance) {
+                bestDistance = collision.offset.norm;
+                bestCollision = collision;
             }
         }
-        return halfPlaneCollisions;
+        return bestCollision;
     }
     render(ctx) {
         ctx.beginPath();
@@ -205,52 +174,63 @@ class ConvexPolygonCollider extends Collider {
         ctx.closePath();
         ctx.stroke();
     }
-    static joinCollisions(a, b) {
-        if (a.always) {
-            return [b];
-        }
-        if (b.always) {
-            return [a];
-        }
-        // Reduce to 3 cases: ab normal, a normal b split, ab split
-        if (b.start < b.end) {
-            [a, b] = [b, a];
-        }
-        if (a.start < a.end) {
-            if (b.start < b.end) {
-                // Case 1: ab normal
-                let joinStart = Math.max(a.start, b.start);
-                let joinEnd = Math.min(a.end, b.end);
-                if (joinStart < joinEnd) {
-                    return [
-                        { start: joinStart, end: joinEnd }
-                    ];
-                }
-                return [];
+    getEndpointCollision(point, direction) {
+        let bestDistance = Number.POSITIVE_INFINITY;
+        let bestDirection = null;
+        for (let i = 0; i < this.N; i++) {
+            let dist = point.sub(this.points[i]).dot(this.normals[i]);
+            if (dist >= 0) {
+                // Not in polygon
+                return null;
             }
-            // Case 2: a normal b split
-            if (a.start < b.start && a.end > b.end) {
-                let joins = [];
-                if (a.start < b.end) {
-                    joins.push({ start: a.start, end: b.end });
+            if (direction.dot(this.normals[i]) >= 0) {
+                // Assumes direction points along the rest of the bone
+                if (-dist < bestDistance) {
+                    bestDistance = -dist;
+                    bestDirection = this.normals[i].mul(bestDistance);
                 }
-                if (a.end > b.start) {
-                    joins.push({ start: b.start, end: a.end });
-                }
-                return joins;
             }
-            return [a];
         }
-        // Case 3: ab split
-        let joins = [
-            { start: Math.max(a.start, b.start), end: Math.min(a.end, b.end) }
-        ];
-        if (a.start < b.end) {
-            joins.push({ start: a.start, end: b.end });
+        if (bestDirection != null) {
+            return {
+                origin: point,
+                offset: bestDirection
+            };
         }
-        if (b.start < a.end) {
-            joins.push({ start: b.start, end: a.end });
+        return null;
+    }
+    getSideCollision(bone) {
+        let boneAxis = bone.end.sub(bone.start).normalized();
+        let boneNormal = boneAxis.rotate90();
+        let tMin = bone.start.dot(boneAxis);
+        let tMax = bone.end.dot(boneAxis);
+        let farthestDistance = 0;
+        let farthestPoint = null;
+        let seenNegativeMin = false, seenNegativeMax = false, seenPositiveMin = false, seenPositiveMax = false;
+        for (let i = 0; i < this.N; i++) {
+            let t = this.points[i].dot(boneAxis);
+            let dist = this.points[i].sub(bone.start).dot(boneNormal);
+            if (dist < 0) {
+                seenNegativeMin || (seenNegativeMin = tMin < t);
+                seenNegativeMax || (seenNegativeMax = t < tMax);
+            }
+            else if (dist > 0) {
+                seenPositiveMin || (seenPositiveMin = tMin < t);
+                seenPositiveMax || (seenPositiveMax = t < tMax);
+            }
+            if (tMin < t && t < tMax) {
+                if (Math.abs(dist) > farthestDistance) {
+                    farthestDistance = Math.abs(dist);
+                    farthestPoint = this.points[i];
+                }
+            }
         }
-        return joins;
+        if (seenNegativeMin && seenNegativeMax && seenPositiveMin && seenPositiveMax && farthestPoint != null) {
+            return {
+                origin: bone.start.add(boneAxis.mul(farthestPoint.sub(bone.start).dot(boneAxis))),
+                offset: boneNormal.mul(farthestPoint.sub(bone.start).dot(boneNormal))
+            };
+        }
+        return null;
     }
 }
