@@ -121,8 +121,9 @@ for (let i = 0; i < 4; i++) {
 }
 
 var run = true;
-var mouse = new Vector(100, 100);
-var action = false;
+var mousePosition = new Vector(100, 100);
+var isMousePressed = false;
+var mouseJustPressed = false;
 
 
 function setup(ctx: CanvasRenderingContext2D) {
@@ -174,13 +175,15 @@ document.onreadystatechange = function(event) {
             game.ctx = context!;
             window.setInterval(update, FRAME_INTERVAL, context);
             canvas.addEventListener("mousemove", event => {
-                mouse = new Vector(event.offsetX, event.offsetY);
+                mousePosition = new Vector(event.offsetX, event.offsetY);
             });
             canvas.addEventListener("mousedown", event => {
-                action = true;
+                isMousePressed = true;
+                mouseJustPressed = true;
             })
             canvas.addEventListener("mouseup", event => {
-                action = false;
+                isMousePressed = false;
+                mouseJustPressed = false;
             })
         }
     }

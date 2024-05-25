@@ -2,11 +2,32 @@ class Game {
     public ctx: CanvasRenderingContext2D;
     public armature: BoneGraphics[];
     public components: IComponent[];
+    public heldObject: IComponent & IGrabbable | null = null;
 
     get robotArm() {
         return this.armature[this.armature.length - 1];
     }
     update() {
+        // Grab or release objects
+        if (!isMousePressed) {
+            this.heldObject = null;
+        } else if (mouseJustPressed) {
+            for (let comp of this.components) {
+                if (iofIGrabbable(comp)) {
+                    let collider = comp.handle;
+                    if (collider.getCollision(this.robotArm) != null) {
+                        this.heldObject = comp;
+                        break;
+                    }
+                }
+            }
+        } else if (this.heldObject != null) {
+            // Check if still within holding bounds
+            let collider = this.heldObject.handle;
+            if (collider.getCollision(this.robotArm) == null) {
+                this.heldObject = null;
+            }
+        }
         // Get all colliders and constraints
         let anyColliders: Collider[] = [];
         let endColliders: Collider[] = [];
@@ -28,13 +49,17 @@ class Game {
             }
         }
         // Compute movements
+        let desiredTarget = mousePosition;
+        if (this.heldObject != null) {
+            desiredTarget = this.heldObject.adjustTarget(desiredTarget);
+        }
         const MAX_ITER = 4;
         for (let i = 0; i < MAX_ITER; i++) {
             let moments = computeMoI(this.armature);
             for (let j = 0; j < this.armature.length; j++) {
                 // Compute desired trajectory
                 let desiredRotation = boneTrack(
-                    this.armature[j], mouse, this.armature[this.armature.length - 1],
+                    this.armature[j], desiredTarget, this.armature[this.armature.length - 1],
                     this.armature[j].rotationSpeed / moments[j] / MAX_ITER
                 );
                 this.armature[j].angle += desiredRotation;
@@ -77,13 +102,14 @@ class Game {
         for (let comp of this.components) {
             comp.update(this);
         }
+        mouseJustPressed = false;
     }
     render() {
-        // Draw armature
         setup(this.ctx);
         for (let comp of this.components) {
             comp.render(this.ctx);
         }
+        // Draw armature
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "white";
         this.ctx.fillStyle = "#0009";

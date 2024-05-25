@@ -1,6 +1,9 @@
 function iofICollidable(object) {
     return "collider" in object;
 }
+function iofIGrabbable(object) {
+    return "handle" in object;
+}
 class SimpleObstacle {
     constructor(collider) {
         this.collider = collider;
@@ -74,12 +77,10 @@ class ChainPull {
         this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game) {
-        this.held = action && game.robotArm.end.sub(this.endPosition).norm < 20;
-        if (this.held) {
+        if (iofIGrabbable(this) && game.heldObject == this) {
             this.endPosition = game.robotArm.end;
         }
         else {
-            // TODO complete
             this.endPosition = this.position.add(new Vector(0, this.length));
         }
     }
@@ -102,12 +103,15 @@ class ChainPull {
         ctx.stroke();
         ctx.closePath();
     }
-    get collider() {
-        if (this.held) {
-            let pulled = Math.min(Math.max(this.endPosition.sub(this.position).norm, this.length) + (this.maxLength - this.length) * this.speed * FRAME_INTERVAL / 1000, this.maxLength);
-            return new CircleConstraint(this.position, pulled, { layer: CollisionLayer.END_BONE, constraint: pulled < this.maxLength });
+    get handle() {
+        return new CircleCollider(this.endPosition, 20);
+    }
+    adjustTarget(target) {
+        let targetDistance = target.sub(this.position).norm;
+        if (targetDistance > this.maxLength) {
+            target = this.position.add(target.sub(this.position).mul(this.maxLength / targetDistance));
         }
-        return new NullCollider();
+        return target;
     }
     get output() {
         return Math.min(Math.max((this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length), 0), 0.95) / 0.95;
@@ -148,22 +152,33 @@ class ChainPull {
     }
 }
 class Lever {
-    constructor(position, facing, { speed = 1, length = 80 }) {
+    constructor(position, facing, { speed = 1, length = 80, maxRotation = Math.PI / 3 }) {
         this.position = position;
         this.facing = facing.normalized();
         this.held = false;
         this.rotation = -Math.PI / 3;
-        this.speed = speed, this.length = length;
+        this.speed = speed, this.length = length, this.maxRotation = maxRotation;
     }
     update(game) {
-        let endPosition = this.getEndPosition();
-        this.held = action && game.robotArm.end.sub(endPosition).norm < 20;
-        if (this.held) {
-            this.rotation = Math.min(Math.max(clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle), -Math.PI / 3), Math.PI / 3);
+        if (iofIGrabbable(this) && game.heldObject == this) {
+            this.rotation = Math.min(Math.max(clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle), -this.maxRotation), this.maxRotation);
         }
         else {
-            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -Math.PI / 3);
+            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -this.maxRotation);
         }
+    }
+    adjustTarget(target) {
+        let targetRotation = clipAngle(target.sub(this.position).angle - this.facing.angle);
+        if (targetRotation > this.rotation) {
+            let resistance = Math.max(2 - 2 * Math.abs(this.rotation / this.maxRotation + 0.5), 1);
+            targetRotation = Math.min(targetRotation, this.rotation + this.speed * FRAME_INTERVAL / 1000 / resistance);
+        }
+        else {
+            let resistance = Math.max(2 - 2 * Math.abs(this.rotation / this.maxRotation - 0.5), 1);
+            targetRotation = Math.max(targetRotation, this.rotation - this.speed * FRAME_INTERVAL / 1000 / resistance);
+        }
+        targetRotation = Math.min(Math.max(targetRotation, -this.maxRotation), this.maxRotation);
+        return this.position.add(this.facing.mul(this.length).rotate(targetRotation));
     }
     render(ctx) {
         let endPosition = this.getEndPosition();
@@ -181,15 +196,11 @@ class Lever {
         ctx.stroke();
         ctx.closePath();
     }
-    get collider() {
-        if (this.held) {
-            let endPosition = this.getEndPosition();
-            return new EllipseConstraint(endPosition, 5, this.length * this.speed * FRAME_INTERVAL / 1000, clipAngle(this.rotation + this.facing.angle), { layer: CollisionLayer.END_BONE, constraint: Math.abs(this.rotation) < 0.99 * Math.PI / 3 });
-        }
-        return new NullCollider();
+    get handle() {
+        return new CircleCollider(this.getEndPosition(), 20);
     }
     get output() {
-        return Math.min(Math.max((this.rotation * 3 / Math.PI) / 0.95, -1), 1) / 2 + 0.5;
+        return Math.min(Math.max((this.rotation / this.maxRotation) / 0.9, -1), 1) / 2 + 0.5;
     }
     getEndPosition() {
         return this.position.add(this.facing.mul(this.length).rotate(this.rotation));

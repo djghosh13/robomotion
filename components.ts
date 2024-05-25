@@ -11,6 +11,14 @@ function iofICollidable(object: any): object is ICollidable {
     return "collider" in object;
 }
 
+interface IGrabbable {
+    get handle(): Collider;
+    adjustTarget(target: Vector): Vector;
+}
+function iofIGrabbable(object: any): object is IGrabbable {
+    return "handle" in object;
+}
+
 
 class SimpleObstacle implements IComponent, ICollidable {
     constructor(public collider: Collider) { }
@@ -95,7 +103,7 @@ class Button implements IComponent, ICollidable, IOutputter {
 }
 
 
-class ChainPull implements IComponent, ICollidable, IOutputter {
+class ChainPull implements IComponent, IGrabbable, IOutputter {
     held: boolean;
     endPosition: Vector;
     speed: number;
@@ -108,11 +116,9 @@ class ChainPull implements IComponent, ICollidable, IOutputter {
         this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game: Game) {
-        this.held = action && game.robotArm.end.sub(this.endPosition).norm < 20;
-        if (this.held) {
+        if (iofIGrabbable(this) && game.heldObject == this) {
             this.endPosition = game.robotArm.end;
         } else {
-            // TODO complete
             this.endPosition = this.position.add(new Vector(0, this.length));
         }
     }
@@ -135,30 +141,20 @@ class ChainPull implements IComponent, ICollidable, IOutputter {
         ctx.stroke();
         ctx.closePath();
     }
-    get collider() {
-        if (this.held) {
-            let pulled = Math.min(
-                Math.max(
-                    this.endPosition.sub(this.position).norm,
-                    this.length
-                ) + (this.maxLength - this.length) * this.speed * FRAME_INTERVAL / 1000,
-                this.maxLength
-            );
-            return new CircleConstraint(
-                this.position, pulled,
-                { layer: CollisionLayer.END_BONE, constraint: pulled < this.maxLength }
-            );
+    get handle() {
+        return new CircleCollider(this.endPosition, 20);
+    }
+    adjustTarget(target: Vector) {
+        let targetDistance = target.sub(this.position).norm;
+        if (targetDistance > this.maxLength) {
+            // TODO allow for resistance
+            target = this.position.add(target.sub(this.position).mul(this.maxLength / targetDistance));
         }
-        return new NullCollider();
+        return target;
     }
     get output() {
-        return Math.min(
-            Math.max(
-                (this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length),
-                0
-            ),
-            0.95
-        ) / 0.95;
+        let fraction = (this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length);
+        return Math.min(Math.max(fraction / 0.95, 0), 1);
     }
     solveCatenary(n: number) {
         // From https://math.stackexchange.com/questions/3557767/how-to-construct-a-catenary-of-a-specified-length-through-two-specified-points
@@ -196,29 +192,41 @@ class ChainPull implements IComponent, ICollidable, IOutputter {
     }
 }
 
-class Lever implements IComponent, ICollidable, IOutputter {
+class Lever implements IComponent, IGrabbable, IOutputter {
     facing: Vector;
     held: boolean;
     rotation: number;
     speed: number;
     length: number;
+    maxRotation: number
     constructor(public position: Vector, facing: Vector,
-            { speed = 1, length = 80 }) {
+            { speed = 1, length = 80, maxRotation = Math.PI/3 }) {
         this.facing = facing.normalized();
         this.held = false;
         this.rotation = -Math.PI / 3;
-        this.speed = speed, this.length = length;
+        this.speed = speed, this.length = length, this.maxRotation = maxRotation;
     }
     update(game: Game) {
-        let endPosition = this.getEndPosition();
-        this.held = action && game.robotArm.end.sub(endPosition).norm < 20;
-        if (this.held) {
+        if (iofIGrabbable(this) && game.heldObject == this) {
             this.rotation = Math.min(Math.max(
                 clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle),
-                -Math.PI / 3), Math.PI / 3);
+                -this.maxRotation), this.maxRotation);
         } else {
-            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -Math.PI / 3);
+            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -this.maxRotation);
         }
+    }
+    adjustTarget(target: Vector) {
+        // TODO Fix up
+        let targetRotation = clipAngle(target.sub(this.position).angle - this.facing.angle);
+        if (targetRotation > this.rotation) {
+            let resistance = Math.max(2 - 2*Math.abs(this.rotation/this.maxRotation + 0.5), 1);
+            targetRotation = Math.min(targetRotation, this.rotation + this.speed * FRAME_INTERVAL / 1000 / resistance);
+        } else {
+            let resistance = Math.max(2 - 2*Math.abs(this.rotation/this.maxRotation - 0.5), 1);
+            targetRotation = Math.max(targetRotation, this.rotation - this.speed * FRAME_INTERVAL / 1000 / resistance);
+        }
+        targetRotation = Math.min(Math.max(targetRotation, -this.maxRotation), this.maxRotation);
+        return this.position.add(this.facing.mul(this.length).rotate(targetRotation));
     }
     render(ctx: CanvasRenderingContext2D): void {
         let endPosition = this.getEndPosition();
@@ -236,20 +244,11 @@ class Lever implements IComponent, ICollidable, IOutputter {
         ctx.stroke();
         ctx.closePath();
     }
-    get collider() {
-        if (this.held) {
-            let endPosition = this.getEndPosition();
-            return new EllipseConstraint(
-                endPosition,
-                5, this.length * this.speed * FRAME_INTERVAL / 1000,
-                clipAngle(this.rotation + this.facing.angle),
-                { layer: CollisionLayer.END_BONE, constraint: Math.abs(this.rotation) < 0.99*Math.PI/3 }
-            );
-        }
-        return new NullCollider();
+    get handle() {
+        return new CircleCollider(this.getEndPosition(), 20);
     }
     get output() {
-        return Math.min(Math.max((this.rotation * 3/Math.PI) / 0.95, -1), 1) / 2 + 0.5;
+        return Math.min(Math.max((this.rotation / this.maxRotation) / 0.9, -1), 1) / 2 + 0.5;
     }
     getEndPosition() {
         return this.position.add(this.facing.mul(this.length).rotate(this.rotation));
