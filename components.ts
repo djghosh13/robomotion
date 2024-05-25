@@ -13,11 +13,12 @@ function iofICollidable(object: any): object is ICollidable {
 
 
 class SimpleObstacle implements IComponent, ICollidable {
-    constructor(public readonly collider: Collider) { }
+    constructor(public collider: Collider) { }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = 3;
         ctx.strokeStyle = "#778";
+        ctx.fillStyle = "#000";
         this.collider.render(ctx);
     }
 }
@@ -38,13 +39,16 @@ function iofIInputter(object: any): object is IInputter {
 
 
 class Button implements IComponent, ICollidable, IOutputter {
-    public facing: Vector;
-    public pressed: number;
-
-    constructor(public position: Vector, facing: Vector, public speed: number = 1,
-            public width: number = 40, public depth: number = 20) {
+    facing: Vector;
+    pressed: number;
+    speed: number;
+    width: number;
+    depth: number;
+    constructor(public position: Vector, facing: Vector,
+            { speed = 1, width = 40, depth = 20 }) {
         this.facing = facing.normalized();
         this.pressed = 0;
+        this.speed = speed, this.width = width, this.depth = depth;
     }
     update(game: Game) {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
@@ -92,13 +96,16 @@ class Button implements IComponent, ICollidable, IOutputter {
 
 
 class ChainPull implements IComponent, ICollidable, IOutputter {
-    public held: boolean;
-    public endPosition: Vector;
-
-    constructor(public position: Vector, public speed: number = 1,
-            public length: number = 80, public maxLength: number = 160) {
+    held: boolean;
+    endPosition: Vector;
+    speed: number;
+    length: number;
+    maxLength: number;
+    constructor(public position: Vector,
+            { speed = 1, length = 80, maxLength = 160 }) {
         this.held = false;
         this.endPosition = this.position.add(new Vector(0, this.length));
+        this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game: Game) {
         this.held = action && game.robotArm.end.sub(this.endPosition).norm < 20;
@@ -106,7 +113,7 @@ class ChainPull implements IComponent, ICollidable, IOutputter {
             this.endPosition = game.robotArm.end;
         } else {
             // TODO complete
-            this.endPosition =this.position.add(new Vector(0, this.length));
+            this.endPosition = this.position.add(new Vector(0, this.length));
         }
     }
     render(ctx: CanvasRenderingContext2D): void {
@@ -137,7 +144,10 @@ class ChainPull implements IComponent, ICollidable, IOutputter {
                 ) + (this.maxLength - this.length) * this.speed * FRAME_INTERVAL / 1000,
                 this.maxLength
             );
-            return new CircleConstraint(this.position, pulled, CollisionLayer.END_BONE);
+            return new CircleConstraint(
+                this.position, pulled,
+                { layer: CollisionLayer.END_BONE, constraint: pulled < this.maxLength }
+            );
         }
         return new NullCollider();
     }
@@ -183,5 +193,65 @@ class ChainPull implements IComponent, ICollidable, IOutputter {
             points.push(new Vector(x, y).mul(-1));
         }
         return points;
+    }
+}
+
+class Lever implements IComponent, ICollidable, IOutputter {
+    facing: Vector;
+    held: boolean;
+    rotation: number;
+    speed: number;
+    length: number;
+    constructor(public position: Vector, facing: Vector,
+            { speed = 1, length = 80 }) {
+        this.facing = facing.normalized();
+        this.held = false;
+        this.rotation = -Math.PI / 3;
+        this.speed = speed, this.length = length;
+    }
+    update(game: Game) {
+        let endPosition = this.getEndPosition();
+        this.held = action && game.robotArm.end.sub(endPosition).norm < 20;
+        if (this.held) {
+            this.rotation = Math.min(Math.max(
+                clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle),
+                -Math.PI / 3), Math.PI / 3);
+        } else {
+            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -Math.PI / 3);
+        }
+    }
+    render(ctx: CanvasRenderingContext2D): void {
+        let endPosition = this.getEndPosition();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = (this.output == 1) ? "#4af" : "#36f";
+        ctx.beginPath();
+        ctx.moveTo(this.position.x, this.position.y);
+        ctx.lineTo(endPosition.x, endPosition.y);
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(endPosition.x, endPosition.y, 10, 0, TWO_PI);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    }
+    get collider() {
+        if (this.held) {
+            let endPosition = this.getEndPosition();
+            return new EllipseConstraint(
+                endPosition,
+                5, this.length * this.speed * FRAME_INTERVAL / 1000,
+                clipAngle(this.rotation + this.facing.angle),
+                { layer: CollisionLayer.END_BONE, constraint: Math.abs(this.rotation) < 0.99*Math.PI/3 }
+            );
+        }
+        return new NullCollider();
+    }
+    get output() {
+        return Math.min(Math.max((this.rotation * 3/Math.PI) / 0.95, -1), 1) / 2 + 0.5;
+    }
+    getEndPosition() {
+        return this.position.add(this.facing.mul(this.length).rotate(this.rotation));
     }
 }

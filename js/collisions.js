@@ -5,8 +5,12 @@ var CollisionLayer;
 })(CollisionLayer || (CollisionLayer = {}));
 ;
 class Collider {
-    constructor(layer = CollisionLayer.ANY_BONE) {
-        this.layer = layer;
+    constructor(props) {
+        this.properties = {
+            layer: CollisionLayer.ANY_BONE,
+            constraint: false,
+            ...props
+        };
     }
 }
 function getCollision(bone, colliders) {
@@ -32,14 +36,14 @@ function fixCollisions(base, tracking, colliders) {
 }
 class NullCollider extends Collider {
     constructor() {
-        super(CollisionLayer.END_BONE);
+        super({});
     }
     getCollision(bone) { return null; }
     render(ctx) { }
 }
 class CircleCollider extends Collider {
-    constructor(center, radius, layer) {
-        super(layer);
+    constructor(center, radius, props) {
+        super(props || {});
         this.center = center;
         this.radius = radius;
     }
@@ -78,14 +82,63 @@ class CircleCollider extends Collider {
         ctx.stroke();
     }
 }
+class EllipseConstraint extends Collider {
+    constructor(center, major, minor, angle, props) {
+        super(props || {});
+        this.center = center;
+        this.major = major;
+        this.minor = minor;
+        this.angle = angle;
+    }
+    getCollision(bone) {
+        // Only constrain end of bone
+        let offset = bone.end.sub(this.center).rotate(-this.angle);
+        let distance = new Vector(offset.x / this.major, offset.y / this.minor).norm2;
+        if (distance > 1) {
+            // Newton's method for theta
+            let theta = offset.angle;
+            const EPSILON = 1e-6;
+            for (let i = 0; i < 5; i++) {
+                let fp = ((this.minor * this.minor - this.major * this.major) * Math.cos(2 * theta)
+                    + this.major * offset.x * Math.cos(theta) + this.minor * offset.y * Math.sin(theta));
+                if (Math.abs(fp) < EPSILON) {
+                    break;
+                }
+                let f = ((this.minor * this.minor - this.major * this.major) / 2 * Math.sin(2 * theta)
+                    + this.major * offset.x * Math.sin(theta) - this.minor * offset.y * Math.cos(theta));
+                theta -= f / fp;
+            }
+            let closestPoint = new Vector(this.major * Math.cos(theta), this.minor * Math.sin(theta));
+            return {
+                origin: bone.end,
+                offset: closestPoint.sub(offset).rotate(this.angle)
+            };
+        }
+        return null;
+    }
+    render(ctx) {
+        ctx.beginPath();
+        ctx.ellipse(this.center.x, this.center.y, this.major, this.minor, this.angle, 0, TWO_PI);
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
 class CircleConstraint extends Collider {
-    constructor(center, radius, layer) {
-        super(layer);
+    constructor(center, radius, props) {
+        super(props || {});
         this.center = center;
         this.radius = radius;
     }
     getCollision(bone) {
-        // TODO
+        // Only constrain end of bone
+        let distance = bone.end.sub(this.center).norm;
+        if (distance > this.radius) {
+            // Move inwards by distance - radius
+            return {
+                origin: bone.end,
+                offset: bone.end.sub(this.center).mul((this.radius - distance) / distance)
+            };
+        }
         return null;
     }
     render(ctx) {
@@ -96,8 +149,8 @@ class CircleConstraint extends Collider {
     }
 }
 class HalfPlaneCollider extends Collider {
-    constructor(point, normal, layer) {
-        super(layer);
+    constructor(point, normal, props) {
+        super(props || {});
         this.point = point;
         this.normal = normal;
     }
@@ -135,8 +188,8 @@ class HalfPlaneCollider extends Collider {
     }
 }
 class ConvexPolygonCollider extends Collider {
-    constructor(points, layer) {
-        super(layer);
+    constructor(points, props) {
+        super(props || {});
         this.points = points;
         this.normals = [];
         for (let i = 0; i < points.length; i++) {
@@ -172,6 +225,7 @@ class ConvexPolygonCollider extends Collider {
             ctx.lineTo(this.points[i].x, this.points[i].y);
         }
         ctx.closePath();
+        ctx.fill();
         ctx.stroke();
     }
     getEndpointCollision(point, direction) {

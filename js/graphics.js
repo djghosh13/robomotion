@@ -4,7 +4,7 @@ class BoneGraphics extends BonePhysics {
         this.lineWidth = width;
     }
     render(ctx) {
-        let ortho = this.end.sub(this.start).rotate(Math.PI / 2).normalized();
+        let ortho = this.end.sub(this.start).rotate90().normalized();
         let startLeft = this.start.add(ortho.mul(this.lineWidth));
         let startRight = this.start.sub(ortho.mul(this.lineWidth));
         let endLeft = this.end.add(ortho.mul(this.lineWidth / 2));

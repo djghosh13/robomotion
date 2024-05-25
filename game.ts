@@ -7,16 +7,24 @@ class Game {
         return this.armature[this.armature.length - 1];
     }
     update() {
-        // Get all colliders
+        // Get all colliders and constraints
         let anyColliders: Collider[] = [];
         let endColliders: Collider[] = [];
+        let anyConstraints: Collider[] = [];
+        let endConstraints: Collider[] = [];
         for (let comp of this.components) {
             if (iofICollidable(comp)) {
                 let collider = comp.collider;
-                if (collider.layer == CollisionLayer.ANY_BONE) {
-                    anyColliders.push(comp.collider);
+                if (!collider.properties.constraint) {
+                    if (collider.properties.layer == CollisionLayer.ANY_BONE) {
+                        anyColliders.push(comp.collider);
+                    }
+                    endColliders.push(comp.collider);
                 }
-                endColliders.push(comp.collider);
+                if (collider.properties.layer == CollisionLayer.ANY_BONE) {
+                    anyConstraints.push(comp.collider);
+                }
+                endConstraints.push(comp.collider);
             }
         }
         // Compute movements
@@ -49,8 +57,8 @@ class Game {
             // Fix existing collisions
             for (let k = 0; k < this.armature.length; k++) {
                 let bone = this.armature[k];
-                let colliders = (k == this.armature.length - 1) ? endColliders : anyColliders;
-                let collision = getCollision(bone, colliders);
+                let constraints = (k == this.armature.length - 1) ? endConstraints : anyConstraints;
+                let collision = getCollision(bone, constraints);
                 if (collision != null) {
                     let boneAxis = bone.end.sub(bone.start).normalized();
                     let t = collision.origin.sub(bone.start).dot(boneAxis) / bone.length;

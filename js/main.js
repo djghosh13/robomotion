@@ -53,12 +53,12 @@ game.components.push(new WireLight([
     new Vector(150, 510), new Vector(150, 540),
     new Vector(200, 540), new Vector(200, 170),
     new Vector(180, 170)
-], 7), new WireLight([
+], 40), new WireLight([
     new Vector(250, 510), new Vector(250, 590)
-]), new WireLight([
+], 134), new WireLight([
     new Vector(350, 510), new Vector(350, 540),
     new Vector(500, 540), new Vector(500, 310)
-], 219), new WireLight([
+], 190), new WireLight([
     new Vector(470, 80), new Vector(650, 80),
     new Vector(650, 490)
 ], 290), 
@@ -67,21 +67,26 @@ new SimpleObstacle(new CircleCollider(new Vector(500, 300), 50)), new SimpleObst
     new Vector(80, 200), new Vector(230, 100), new Vector(130, 50)
 ])), 
 // Interactibles
-new Button(new Vector(150, 500), new Vector(0, -1), 1), new SimpleObstacle(new ConvexPolygonCollider([
+new Button(new Vector(150, 500), new Vector(0, -1), {}), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(125, 500), new Vector(175, 500),
     new Vector(175, 510), new Vector(125, 510)
-])), new Button(new Vector(250, 500), new Vector(0, -1), 4), new SimpleObstacle(new ConvexPolygonCollider([
+])), new Button(new Vector(250, 500), new Vector(0, -1), { speed: 4 }), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(225, 500), new Vector(275, 500),
     new Vector(275, 510), new Vector(225, 510)
-])), new Button(new Vector(350, 500), new Vector(0, -1), 2, 60, 30), new SimpleObstacle(new ConvexPolygonCollider([
+])), new Button(new Vector(350, 500), new Vector(0, -1), { speed: 2, width: 60, depth: 30 }), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(315, 500), new Vector(385, 500),
     new Vector(385, 510), new Vector(315, 510)
-])), new ChainPull(new Vector(450, 100), 0.8), new SimpleObstacle(new ConvexPolygonCollider([
+])), new ChainPull(new Vector(450, 100), { speed: 0.8 }), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(430, 100), new Vector(470, 100),
     new Vector(470, 60), new Vector(430, 60)
 ])), 
 // Aesthetics
-new Light(new Vector(170, 170), 7), new Light(new Vector(250, 600)), new Light(new Vector(500, 300), 219), new Light(new Vector(650, 500), 290));
+new Light(new Vector(170, 170), 40), new Light(new Vector(250, 600), 134), new Light(new Vector(500, 300), 190), new Light(new Vector(650, 500), 290), 
+//
+new Lever(new Vector(50, 350), new Vector(1, 0), { speed: 4 }), new SimpleObstacle(new ConvexPolygonCollider([
+    new Vector(60, 320), new Vector(60, 380),
+    new Vector(40, 380), new Vector(40, 320)
+])));
 for (let i = 0; i < 4; i++) {
     let button = game.components[2 * i + 6];
     let wireLight = game.components[i];

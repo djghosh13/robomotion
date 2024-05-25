@@ -7,9 +7,20 @@ enum CollisionLayer {
     ANY_BONE,
     END_BONE
 };
+type ColliderProperties = {
+    layer?: CollisionLayer;
+    constraint?: boolean;
+};
 
 abstract class Collider {
-    constructor(public layer: CollisionLayer = CollisionLayer.ANY_BONE) { }
+    properties: ColliderProperties;
+    constructor(props: ColliderProperties) {
+        this.properties = {
+            layer: CollisionLayer.ANY_BONE,
+            constraint: false,
+            ...props
+        };
+    }
     abstract getCollision(bone: Bone): Collision | null;
     abstract render(ctx: CanvasRenderingContext2D): void;
 }
@@ -41,7 +52,7 @@ function fixCollisions(base: Bone, tracking: Bone, colliders: Collider[]) {
 
 class NullCollider extends Collider {
     constructor() {
-        super(CollisionLayer.END_BONE);
+        super({ });
     }
     getCollision(bone: Bone) { return null; }
     render(ctx: CanvasRenderingContext2D) { }
@@ -49,8 +60,8 @@ class NullCollider extends Collider {
 
 
 class CircleCollider extends Collider {
-    constructor(public center: Vector, public radius: number, layer?: CollisionLayer) {
-        super(layer);
+    constructor(public center: Vector, public radius: number, props?: ColliderProperties) {
+        super(props || {});
     }
     getCollision(bone: Bone) {
         const EPSILON = 1e-6;
@@ -89,12 +100,60 @@ class CircleCollider extends Collider {
 }
 
 
-class CircleConstraint extends Collider {
-    constructor(public center: Vector, public radius: number, layer?: CollisionLayer) {
-        super(layer);
+class EllipseConstraint extends Collider {
+    constructor(public center: Vector, public major: number, public minor: number, public angle: number,
+            props?: ColliderProperties) {
+        super(props || {});
     }
     getCollision(bone: Bone) {
-        // TODO
+        // Only constrain end of bone
+        let offset = bone.end.sub(this.center).rotate(-this.angle);
+        let distance = new Vector(offset.x / this.major, offset.y / this.minor).norm2;
+        if (distance > 1) {
+            // Newton's method for theta
+            let theta = offset.angle;
+            const EPSILON = 1e-6;
+            for (let i = 0; i < 5; i++) {
+                let fp = ((this.minor*this.minor - this.major*this.major)*Math.cos(2*theta)
+                    + this.major*offset.x*Math.cos(theta) + this.minor*offset.y*Math.sin(theta));
+                if (Math.abs(fp) < EPSILON) {
+                    break;
+                }
+                let f = ((this.minor*this.minor - this.major*this.major)/2*Math.sin(2*theta)
+                    + this.major*offset.x*Math.sin(theta) - this.minor*offset.y*Math.cos(theta));
+                theta -= f / fp;
+            }
+            let closestPoint = new Vector(this.major*Math.cos(theta), this.minor*Math.sin(theta));
+            return {
+                origin: bone.end,
+                offset: closestPoint.sub(offset).rotate(this.angle)
+            };
+        }
+        return null;
+    }
+    render(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.ellipse(this.center.x, this.center.y, this.major, this.minor, this.angle, 0, TWO_PI);
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+
+
+class CircleConstraint extends Collider {
+    constructor(public center: Vector, public radius: number, props?: ColliderProperties) {
+        super(props || {});
+    }
+    getCollision(bone: Bone) {
+        // Only constrain end of bone
+        let distance = bone.end.sub(this.center).norm;
+        if (distance > this.radius) {
+            // Move inwards by distance - radius
+            return {
+                origin: bone.end,
+                offset: bone.end.sub(this.center).mul((this.radius - distance) / distance)
+            };
+        }
         return null;
     }
     render(ctx: CanvasRenderingContext2D) {
@@ -107,8 +166,8 @@ class CircleConstraint extends Collider {
 
 
 class HalfPlaneCollider extends Collider {
-    constructor(public point: Vector, public normal: Vector, layer?: CollisionLayer) {
-        super(layer);
+    constructor(public point: Vector, public normal: Vector, props?: ColliderProperties) {
+        super(props || {});
     }
     getCollision(bone: Bone) {
         let closestPoint = bone.end.sub(bone.start).dot(this.normal) > 0 ? bone.start : bone.end;
@@ -147,8 +206,8 @@ class HalfPlaneCollider extends Collider {
 class ConvexPolygonCollider extends Collider {
     normals: Vector[];
 
-    constructor(public points: Vector[], layer?: CollisionLayer) {
-        super(layer);
+    constructor(public points: Vector[], props?: ColliderProperties) {
+        super(props || {});
         this.normals = [];
         for (let i = 0; i < points.length; i++) {
             let normal = this.points[(i + 1) % this.N].sub(this.points[i]).rotate90().normalized();
@@ -183,6 +242,7 @@ class ConvexPolygonCollider extends Collider {
             ctx.lineTo(this.points[i].x, this.points[i].y);
         }
         ctx.closePath();
+        ctx.fill();
         ctx.stroke();
     }
     private getEndpointCollision(point: Vector, direction: Vector): Collision | null {

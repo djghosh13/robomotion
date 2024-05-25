@@ -9,6 +9,7 @@ class SimpleObstacle {
     render(ctx) {
         ctx.lineWidth = 3;
         ctx.strokeStyle = "#778";
+        ctx.fillStyle = "#000";
         this.collider.render(ctx);
     }
 }
@@ -19,13 +20,11 @@ function iofIInputter(object) {
     return "input" in object;
 }
 class Button {
-    constructor(position, facing, speed = 1, width = 40, depth = 20) {
+    constructor(position, facing, { speed = 1, width = 40, depth = 20 }) {
         this.position = position;
-        this.speed = speed;
-        this.width = width;
-        this.depth = depth;
         this.facing = facing.normalized();
         this.pressed = 0;
+        this.speed = speed, this.width = width, this.depth = depth;
     }
     update(game) {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
@@ -68,13 +67,11 @@ class Button {
     }
 }
 class ChainPull {
-    constructor(position, speed = 1, length = 80, maxLength = 160) {
+    constructor(position, { speed = 1, length = 80, maxLength = 160 }) {
         this.position = position;
-        this.speed = speed;
-        this.length = length;
-        this.maxLength = maxLength;
         this.held = false;
         this.endPosition = this.position.add(new Vector(0, this.length));
+        this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game) {
         this.held = action && game.robotArm.end.sub(this.endPosition).norm < 20;
@@ -108,7 +105,7 @@ class ChainPull {
     get collider() {
         if (this.held) {
             let pulled = Math.min(Math.max(this.endPosition.sub(this.position).norm, this.length) + (this.maxLength - this.length) * this.speed * FRAME_INTERVAL / 1000, this.maxLength);
-            return new CircleConstraint(this.position, pulled, CollisionLayer.END_BONE);
+            return new CircleConstraint(this.position, pulled, { layer: CollisionLayer.END_BONE, constraint: pulled < this.maxLength });
         }
         return new NullCollider();
     }
@@ -148,5 +145,53 @@ class ChainPull {
             points.push(new Vector(x, y).mul(-1));
         }
         return points;
+    }
+}
+class Lever {
+    constructor(position, facing, { speed = 1, length = 80 }) {
+        this.position = position;
+        this.facing = facing.normalized();
+        this.held = false;
+        this.rotation = -Math.PI / 3;
+        this.speed = speed, this.length = length;
+    }
+    update(game) {
+        let endPosition = this.getEndPosition();
+        this.held = action && game.robotArm.end.sub(endPosition).norm < 20;
+        if (this.held) {
+            this.rotation = Math.min(Math.max(clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle), -Math.PI / 3), Math.PI / 3);
+        }
+        else {
+            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -Math.PI / 3);
+        }
+    }
+    render(ctx) {
+        let endPosition = this.getEndPosition();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = (this.output == 1) ? "#4af" : "#36f";
+        ctx.beginPath();
+        ctx.moveTo(this.position.x, this.position.y);
+        ctx.lineTo(endPosition.x, endPosition.y);
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(endPosition.x, endPosition.y, 10, 0, TWO_PI);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    }
+    get collider() {
+        if (this.held) {
+            let endPosition = this.getEndPosition();
+            return new EllipseConstraint(endPosition, 5, this.length * this.speed * FRAME_INTERVAL / 1000, clipAngle(this.rotation + this.facing.angle), { layer: CollisionLayer.END_BONE, constraint: Math.abs(this.rotation) < 0.99 * Math.PI / 3 });
+        }
+        return new NullCollider();
+    }
+    get output() {
+        return Math.min(Math.max((this.rotation * 3 / Math.PI) / 0.95, -1), 1) / 2 + 0.5;
+    }
+    getEndPosition() {
+        return this.position.add(this.facing.mul(this.length).rotate(this.rotation));
     }
 }
