@@ -11,10 +11,42 @@ class SimpleObstacle {
     update(game) { }
     render(ctx) {
         ctx.lineWidth = 3;
-        ctx.strokeStyle = "#778";
-        ctx.fillStyle = "#000";
+        ctx.strokeStyle = "#889";
+        ctx.fillStyle = "#1a1a1a";
         this.collider.render(ctx);
     }
+}
+class SimpleObject {
+    constructor(position) {
+        this.position = position;
+    }
+    update(game) {
+        if (iofIGrabbable(this) && game.heldObject == this) {
+            this.position = game.robotArm.end;
+        }
+    }
+    render(ctx) {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#A45229";
+        ctx.fillStyle = "#3B1F12";
+        ctx.beginPath();
+        ctx.moveTo(this.position.x - 10, this.position.y - 10);
+        ctx.lineTo(this.position.x - 10, this.position.y + 10);
+        ctx.lineTo(this.position.x + 10, this.position.y + 10);
+        ctx.lineTo(this.position.x + 10, this.position.y - 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+    get handle() {
+        return new ConvexPolygonCollider([
+            this.position.sub(new Vector(-15, -15)),
+            this.position.sub(new Vector(-15, 15)),
+            this.position.sub(new Vector(15, 15)),
+            this.position.sub(new Vector(15, -15))
+        ]);
+    }
+    adjustTarget(target) { return target; }
 }
 function iofIOutputter(object) {
     return "output" in object;
@@ -32,6 +64,7 @@ class Button {
     update(game) {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
         // Pushed by robot hand
+        // TODO allow being pushed by arm, not just end
         for (let i = 0; i < game.armature.length; i++) {
             let relativePosition = game.armature[i].end.sub(this.position).rotate(-this.facing.angle);
             let relativeCrossAxis = relativePosition.y / this.width;
@@ -46,11 +79,13 @@ class Button {
         ctx.beginPath();
         ctx.lineWidth = 3;
         ctx.strokeStyle = (this.output == 1) ? "#4af" : "#36f";
+        ctx.fillStyle = (this.output == 1) ? "#245176" : "#09112a";
         let [brc, frc, flc, blc] = this.cornerPositions(this.pressed);
         ctx.moveTo(brc.x, brc.y);
         ctx.lineTo(frc.x, frc.y);
         ctx.lineTo(flc.x, flc.y);
         ctx.lineTo(blc.x, blc.y);
+        ctx.fill();
         ctx.stroke();
         ctx.closePath();
     }
@@ -96,7 +131,7 @@ class ChainPull {
         ctx.lineTo(this.endPosition.x, this.endPosition.y);
         ctx.stroke();
         ctx.closePath();
-        ctx.fillStyle = "black";
+        ctx.fillStyle = (this.output == 1) ? "#245176" : "#09112a";
         ctx.beginPath();
         ctx.arc(this.endPosition.x, this.endPosition.y, 10, 0, TWO_PI);
         ctx.fill();
@@ -109,12 +144,14 @@ class ChainPull {
     adjustTarget(target) {
         let targetDistance = target.sub(this.position).norm;
         if (targetDistance > this.maxLength) {
+            // TODO allow for resistance
             target = this.position.add(target.sub(this.position).mul(this.maxLength / targetDistance));
         }
         return target;
     }
     get output() {
-        return Math.min(Math.max((this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length), 0), 0.95) / 0.95;
+        let fraction = (this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length);
+        return Math.min(Math.max(fraction / 0.95, 0), 1);
     }
     solveCatenary(n) {
         // From https://math.stackexchange.com/questions/3557767/how-to-construct-a-catenary-of-a-specified-length-through-two-specified-points
@@ -168,6 +205,7 @@ class Lever {
         }
     }
     adjustTarget(target) {
+        // TODO Fix up
         let targetRotation = clipAngle(target.sub(this.position).angle - this.facing.angle);
         if (targetRotation > this.rotation) {
             let resistance = Math.max(2 - 2 * Math.abs(this.rotation / this.maxRotation + 0.5), 1);
@@ -189,7 +227,7 @@ class Lever {
         ctx.lineTo(endPosition.x, endPosition.y);
         ctx.stroke();
         ctx.closePath();
-        ctx.fillStyle = "black";
+        ctx.fillStyle = (this.output == 1) ? "#245176" : "#09112a";
         ctx.beginPath();
         ctx.arc(endPosition.x, endPosition.y, 10, 0, TWO_PI);
         ctx.fill();

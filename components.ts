@@ -25,10 +25,41 @@ class SimpleObstacle implements IComponent, ICollidable {
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = 3;
-        ctx.strokeStyle = "#778";
-        ctx.fillStyle = "#000";
+        ctx.strokeStyle = "#889";
+        ctx.fillStyle = "#1a1a1a";
         this.collider.render(ctx);
     }
+}
+
+class SimpleObject implements IComponent, IGrabbable {
+    constructor(public position: Vector) { }
+    update(game: Game) {
+        if (iofIGrabbable(this) && game.heldObject == this) {
+            this.position = game.robotArm.end;
+        }
+    }
+    render(ctx: CanvasRenderingContext2D) {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#A45229";
+        ctx.fillStyle = "#3B1F12";
+        ctx.beginPath();
+        ctx.moveTo(this.position.x - 10, this.position.y - 10);
+        ctx.lineTo(this.position.x - 10, this.position.y + 10);
+        ctx.lineTo(this.position.x + 10, this.position.y + 10);
+        ctx.lineTo(this.position.x + 10, this.position.y - 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+    get handle() {
+        return new ConvexPolygonCollider([
+            this.position.sub(new Vector(-15, -15)),
+            this.position.sub(new Vector(-15, 15)),
+            this.position.sub(new Vector(15, 15)),
+            this.position.sub(new Vector(15, -15))
+        ]);
+    }
+    adjustTarget(target: Vector) { return target; }
 }
 
 
@@ -61,6 +92,7 @@ class Button implements IComponent, ICollidable, IOutputter {
     update(game: Game) {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
         // Pushed by robot hand
+        // TODO allow being pushed by arm, not just end
         for (let i = 0; i < game.armature.length; i++) {
             let relativePosition = game.armature[i].end.sub(this.position).rotate(-this.facing.angle);
             let relativeCrossAxis = relativePosition.y / this.width;
@@ -75,11 +107,13 @@ class Button implements IComponent, ICollidable, IOutputter {
         ctx.beginPath();
         ctx.lineWidth = 3;
         ctx.strokeStyle = (this.output == 1) ? "#4af" : "#36f";
+        ctx.fillStyle = (this.output == 1) ? "#245176" : "#09112a";
         let [brc, frc, flc, blc] = this.cornerPositions(this.pressed);
         ctx.moveTo(brc.x, brc.y);
         ctx.lineTo(frc.x, frc.y);
         ctx.lineTo(flc.x, flc.y);
         ctx.lineTo(blc.x, blc.y);
+        ctx.fill();
         ctx.stroke();
         ctx.closePath();
     }
@@ -134,7 +168,7 @@ class ChainPull implements IComponent, IGrabbable, IOutputter {
         ctx.lineTo(this.endPosition.x, this.endPosition.y);
         ctx.stroke();
         ctx.closePath();
-        ctx.fillStyle = "black";
+        ctx.fillStyle = (this.output == 1) ? "#245176" : "#09112a";
         ctx.beginPath();
         ctx.arc(this.endPosition.x, this.endPosition.y, 10, 0, TWO_PI);
         ctx.fill();
@@ -237,7 +271,7 @@ class Lever implements IComponent, IGrabbable, IOutputter {
         ctx.lineTo(endPosition.x, endPosition.y);
         ctx.stroke();
         ctx.closePath();
-        ctx.fillStyle = "black";
+        ctx.fillStyle = (this.output == 1) ? "#245176" : "#09112a";
         ctx.beginPath();
         ctx.arc(endPosition.x, endPosition.y, 10, 0, TWO_PI);
         ctx.fill();

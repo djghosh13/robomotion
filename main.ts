@@ -1,124 +1,139 @@
 const FRAME_INTERVAL = 20;
 
 const ARMATURE_PRESETS = new Map<string, BoneGraphics[]>();
-ARMATURE_PRESETS.set("simple_joints", buildArmGraphics({
-    root: [ 300, 300 ],
+ARMATURE_PRESETS.set("example_level", buildArmGraphics({
+    root: [ 280, 380 ],
     bones: [
-        { length: 120, speed: 0.05, width: 15 },
-        { length: 110, speed: 0.08, width: 10 },
-        { length: 30, speed: 0.05, width: 6 }
+        { length: 110, speed: 1, width: 30 },
+        { length: 80, speed: 1.5, width: 20 },
+        { length: 60, speed: 2.5, width: 20 },
+        { length: 45, speed: 3, width: 18 }
     ]
 }));
-ARMATURE_PRESETS.set("human_arm", buildArmGraphics({
-    root: [ 300, 300 ],
-    bones: [
-        { length: 120, speed: 0.05, width: 15 },
-        { length: 100, speed: 0.08, width: 13 },
-        { length: 20, speed: 0.02, width: 8 },
-        { length: 10, speed: 0.05, width: 6 },
-        { length: 10, speed: 0.02, width: 6 }
-    ]
-}));
-ARMATURE_PRESETS.set("many_joints", buildArmGraphics({
-    root: [ 300, 300 ],
-    bones: [
-        { length: 100, speed: 0.04, width: 13 },
-        { length: 25, speed: 0.04, width: 8 },
-        { length: 80, speed: 0.04, width: 10 },
-        { length: 35, speed: 0.04, width: 8 },
-        { length: 10, speed: 0.07, width: 6 },
-        { length: 10, speed: 0.05, width: 6 }
-    ]
-}));
-ARMATURE_PRESETS.set("slow_arm", buildArmGraphics({
-    root: [ 300, 300 ],
-    bones: [
-        { length: 140, speed: 0.02, width: 15 },
-        { length: 65, speed: 0.05, width: 8 },
-        { length: 35, speed: 0.08, width: 10 },
-        { length: 10, speed: 0.03, width: 6 },
-        { length: 10, speed: 0.03, width: 6 }
-    ]
-}));
-
-var armature = ARMATURE_PRESETS.get("slow_arm")!;
-var colliders: Collider[] = [
-    new CircleCollider(new Vector(500, 300), 50),
-    new ConvexPolygonCollider([
-        new Vector(100, 200), new Vector(250, 100), new Vector(150, 50)
-    ]),
-];
 
 var game = new Game();
-game.armature = ARMATURE_PRESETS.get("slow_arm")!;
+game.armature = ARMATURE_PRESETS.get("example_level")!;
 game.components = [];
 game.components.push(
-    new WireLight([
-        new Vector(150, 510), new Vector(150, 540),
-        new Vector(200, 540), new Vector(200, 170),
-        new Vector(180, 170)
-    ], 40),
-    new WireLight([
-        new Vector(250, 510), new Vector(250, 590)
-    ], 134),
-    new WireLight([
-        new Vector(350, 510), new Vector(350, 540),
-        new Vector(500, 540), new Vector(500, 310)
-    ], 190),
-    new WireLight([
-        new Vector(470, 80), new Vector(650, 80),
-        new Vector(650, 490)
-    ], 290),
+    // Wire lights
+
     // Obstacles
-    new SimpleObstacle(new CircleCollider(new Vector(500, 300), 50)),
     new SimpleObstacle(new ConvexPolygonCollider([
-        new Vector(80, 200), new Vector(230, 100), new Vector(130, 50)
+        new Vector(70, 0), new Vector(70, 100),
+        new Vector(160, 100), new Vector(160, 0)
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(80, 250), new Vector(80, 280),
+        new Vector(150, 280), new Vector(150, 250)
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(70, 230), new Vector(70, 250), new Vector(100, 270),
+        new Vector(130, 270), new Vector(160, 250), new Vector(160, 230)
+    ])),
+
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(400, 0), new Vector(400, 100),
+        new Vector(490, 100), new Vector(490, 0)
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(410, 250), new Vector(410, 280),
+        new Vector(480, 280), new Vector(480, 250)
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(400, 230), new Vector(400, 250), new Vector(430, 270),
+        new Vector(460, 270), new Vector(490, 250), new Vector(490, 230)
+    ])),
+    
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(250, 0), new Vector(250, 40),
+        new Vector(310, 40), new Vector(310, 0),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(620, 0), new Vector(620, 40),
+        new Vector(680, 40), new Vector(680, 0),
+    ])),
+
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(0, 400), new Vector(100, 400),
+        new Vector(100, 425), new Vector(0, 425),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(80, 540), new Vector(110, 540),
+        new Vector(110, 590), new Vector(80, 590),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(0, 525), new Vector(100, 525),
+        new Vector(100, 600), new Vector(0, 600),
+    ])),
+
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(530, 720), new Vector(530, 680),
+        new Vector(650, 680), new Vector(650, 720),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(520, 720), new Vector(520, 580),
+        new Vector(540, 580), new Vector(540, 720),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(640, 720), new Vector(640, 580),
+        new Vector(660, 580), new Vector(660, 720),
+    ])),
+
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(770, 460), new Vector(870, 460),
+        new Vector(870, 495), new Vector(770, 495),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(770, 580), new Vector(870, 580),
+        new Vector(870, 615), new Vector(820, 625), new Vector(770, 615),
+    ])),
+    new SimpleObstacle(new ConvexPolygonCollider([
+        new Vector(0, 525), new Vector(100, 525),
+        new Vector(100, 600), new Vector(0, 600),
     ])),
     // Interactibles
-    new Button(new Vector(150, 500), new Vector(0, -1), { }),
+    new Button(new Vector(115, 280), new Vector(0, 1), {
+        speed: 2, width: 60, depth: 20
+    }),
+    new Button(new Vector(445, 280), new Vector(0, 1), {
+        speed: 2, width: 60, depth: 20
+    }),
+
+    new Button(new Vector(110, 565), new Vector(1, 0), {
+        speed: 2, width: 40, depth: 15
+    }),
+
+    new ChainPull(new Vector(280, 40), {
+        speed: 2, length: 85, maxLength: 125
+    }),
+    new ChainPull(new Vector(650, 40), {
+        speed: 2, length: 85, maxLength: 125
+    }),
+
+    new Lever(new Vector(515, 645), new Vector(-1, 0), {
+        speed: 0.5, length: 50, maxRotation: Math.PI / 4
+    }),
     new SimpleObstacle(new ConvexPolygonCollider([
-        new Vector(125, 500), new Vector(175, 500),
-        new Vector(175, 510), new Vector(125, 510)
+        new Vector(520, 620), new Vector(510, 620),
+        new Vector(510, 670), new Vector(520, 670),
     ])),
-    new Button(new Vector(250, 500), new Vector(0, -1), { speed: 4 }),
-    new SimpleObstacle(new ConvexPolygonCollider([
-        new Vector(225, 500), new Vector(275, 500),
-        new Vector(275, 510), new Vector(225, 510)
-    ])),
-    new Button(new Vector(350, 500), new Vector(0, -1), { speed: 2, width: 60, depth: 30 }),
-    new SimpleObstacle(new ConvexPolygonCollider([
-        new Vector(315, 500), new Vector(385, 500),
-        new Vector(385, 510), new Vector(315, 510)
-    ])),
-    new ChainPull(new Vector(450, 100), { speed: 0.8 }),
-    new SimpleObstacle(new ConvexPolygonCollider([
-        new Vector(430, 100), new Vector(470, 100),
-        new Vector(470, 60), new Vector(430, 60)
-    ])),
+
+    new SimpleObject(new Vector(50, 490)),
     // Aesthetics
-    new Light(new Vector(170, 170), 40),
-    new Light(new Vector(250, 600), 134),
-    new Light(new Vector(500, 300), 190),
-    new Light(new Vector(650, 500), 290),
-    //
-    new Lever(new Vector(50, 350), new Vector(1, 0), { speed: 4 }),
-    new SimpleObstacle(new ConvexPolygonCollider([
-        new Vector(60, 320), new Vector(60, 380),
-        new Vector(40, 380), new Vector(40, 320)
-    ]))
+
 );
 
-for (let i = 0; i < 4; i++) {
-    let button = game.components[2*i + 6];
-    let wireLight = game.components[i];
-    let light = game.components[i + 14];
-    if (iofIOutputter(button) && iofIInputter(wireLight) && iofIInputter(light)) {
-        game.components.push(
-            new SimpleCircuit(button, wireLight),
-            new SimpleCircuit(button, light)
-        );
-    }
-}
+// for (let i = 0; i < 4; i++) {
+//     let button = game.components[2*i + 6];
+//     let wireLight = game.components[i];
+//     let light = game.components[i + 14];
+//     if (iofIOutputter(button) && iofIInputter(wireLight) && iofIInputter(light)) {
+//         game.components.push(
+//             new SimpleCircuit(button, wireLight),
+//             new SimpleCircuit(button, light)
+//         );
+//     }
+// }
 
 var run = true;
 var mousePosition = new Vector(100, 100);
@@ -132,7 +147,7 @@ function setup(ctx: CanvasRenderingContext2D) {
     ctx.strokeStyle = "white";
     ctx.fillStyle = "white";
     ctx.lineCap = "round";
-    background(ctx, "black");
+    background(ctx, "#180F26");
 }
 
 function background(ctx: CanvasRenderingContext2D, color: string) {

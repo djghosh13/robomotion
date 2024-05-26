@@ -58,7 +58,7 @@ class Game {
             let moments = computeMoI(this.armature);
             for (let j = 0; j < this.armature.length; j++) {
                 // Compute desired trajectory
-                let desiredRotation = boneTrack(this.armature[j], desiredTarget, this.armature[this.armature.length - 1], this.armature[j].rotationSpeed / moments[j] / MAX_ITER);
+                let desiredRotation = boneTrack(this.armature[j], desiredTarget, this.armature[this.armature.length - 1], this.armature[j].rotationSpeed / moments[j] * FRAME_INTERVAL / 1000 / MAX_ITER);
                 this.armature[j].angle += desiredRotation;
                 // Prevent collisions
                 const MAX_FIXES = 4;
@@ -104,11 +104,13 @@ class Game {
             comp.render(this.ctx);
         }
         // Draw armature
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeStyle = "white";
-        this.ctx.fillStyle = "#0009";
         for (let i = 0; i < this.armature.length; i++) {
-            this.armature[i].render(this.ctx);
+            if (i == this.armature.length - 1) {
+                this.armature[i].renderGrabber(this.ctx);
+            }
+            else {
+                this.armature[i].render(this.ctx);
+            }
         }
     }
 }
