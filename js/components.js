@@ -17,12 +17,20 @@ class SimpleObstacle {
     }
 }
 class SimpleObject {
-    constructor(position) {
+    constructor(position, { width = 20 }) {
         this.position = position;
+        this.velocity = Vector.ZERO;
+        this.width = width;
     }
     update(game) {
-        if (iofIGrabbable(this) && game.heldObject == this) {
-            this.position = game.robotArm.end;
+        if (game.heldObject == this) {
+            let newPosition = game.robotArm.end;
+            this.velocity = newPosition.sub(this.position);
+            this.position = newPosition;
+        }
+        else {
+            this.position = this.position.add(this.velocity);
+            this.velocity = this.velocity.mul(0.9);
         }
     }
     render(ctx) {
@@ -30,20 +38,21 @@ class SimpleObject {
         ctx.strokeStyle = "#A45229";
         ctx.fillStyle = "#3B1F12";
         ctx.beginPath();
-        ctx.moveTo(this.position.x - 10, this.position.y - 10);
-        ctx.lineTo(this.position.x - 10, this.position.y + 10);
-        ctx.lineTo(this.position.x + 10, this.position.y + 10);
-        ctx.lineTo(this.position.x + 10, this.position.y - 10);
+        ctx.moveTo(this.position.x - this.width / 2, this.position.y - this.width / 2);
+        ctx.lineTo(this.position.x - this.width / 2, this.position.y + this.width / 2);
+        ctx.lineTo(this.position.x + this.width / 2, this.position.y + this.width / 2);
+        ctx.lineTo(this.position.x + this.width / 2, this.position.y - this.width / 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
     }
     get handle() {
+        let bound = this.width / 2 + 5;
         return new ConvexPolygonCollider([
-            this.position.sub(new Vector(-15, -15)),
-            this.position.sub(new Vector(-15, 15)),
-            this.position.sub(new Vector(15, 15)),
-            this.position.sub(new Vector(15, -15))
+            this.position.sub(new Vector(-bound, -bound)),
+            this.position.sub(new Vector(-bound, bound)),
+            this.position.sub(new Vector(bound, bound)),
+            this.position.sub(new Vector(bound, -bound))
         ]);
     }
     adjustTarget(target) { return target; }
@@ -112,8 +121,14 @@ class ChainPull {
         this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game) {
-        if (iofIGrabbable(this) && game.heldObject == this) {
-            this.endPosition = game.robotArm.end;
+        if (game.heldObject == this) {
+            let offset = game.robotArm.end.sub(this.position);
+            if (offset.norm > this.maxLength) {
+                this.endPosition = this.position.add(offset.normalized().mul(this.maxLength));
+            }
+            else {
+                this.endPosition = game.robotArm.end;
+            }
         }
         else {
             this.endPosition = this.position.add(new Vector(0, this.length));
@@ -197,7 +212,7 @@ class Lever {
         this.speed = speed, this.length = length, this.maxRotation = maxRotation;
     }
     update(game) {
-        if (iofIGrabbable(this) && game.heldObject == this) {
+        if (game.heldObject == this) {
             this.rotation = Math.min(Math.max(clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle), -this.maxRotation), this.maxRotation);
         }
         else {
@@ -243,4 +258,76 @@ class Lever {
     getEndPosition() {
         return this.position.add(this.facing.mul(this.length).rotate(this.rotation));
     }
+}
+class Carrier {
+    constructor(root, positions, { speed = 100 }) {
+        this.root = root;
+        this.positions = positions;
+        if (!(root instanceof Root)) {
+            throw new Error("Bone is not root!");
+        }
+        this.position = this.positions[0];
+        this.state = 0;
+        this.cooldown = 0;
+        this.speed = speed;
+    }
+    update(game) {
+        const EPSILON = 1e-6;
+        if (this.cooldown > 0) {
+            let offset = this.position.sub(this.positions[this.state]);
+            if (offset.norm2 > EPSILON) {
+                // Move towards next position
+                let mult = Math.max(1 - (this.speed * FRAME_INTERVAL / 1000) / offset.norm, 0);
+                this.position = this.positions[this.state].add(offset.mul(mult));
+            }
+            else {
+                this.cooldown = Math.max(this.cooldown - FRAME_INTERVAL / 1000, 0);
+            }
+        }
+    }
+    render(ctx) {
+        ctx.lineWidth = 2;
+        ctx.fillStyle = "#18141f";
+        for (let i = 0; i < this.positions.length; i++) {
+            ctx.strokeStyle = "#3d334d";
+            if (this.cooldown > 0 && (this.N == 2 || (i + 1) % this.N == this.state)) {
+                ctx.strokeStyle = "#5c3d8f";
+            }
+            let start = this.positions[i];
+            let end = this.positions[(i + 1) % this.N];
+            let ortho = end.sub(start).rotate90().normalized().mul(5);
+            let vtxs = [
+                start.add(ortho), end.add(ortho),
+                end.sub(ortho), start.sub(ortho)
+            ];
+            ctx.beginPath();
+            ctx.moveTo(vtxs[0].x, vtxs[0].y);
+            for (let j = 1; j < 4; j++) {
+                ctx.lineTo(vtxs[j].x, vtxs[j].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+        for (let i = 0; i < this.positions.length; i++) {
+            ctx.strokeStyle = "#3d334d";
+            if (this.cooldown > 0 && (i == this.state || (i + 1) % this.N == this.state)) {
+                ctx.strokeStyle = "#5c3d8f";
+            }
+            ctx.beginPath();
+            ctx.rect(this.positions[i].x - 30, this.positions[i].y - 30, 60, 60);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+    set input(value) {
+        if (value == 1 && this.cooldown == 0) {
+            this.cooldown = 1;
+            this.state = (this.state + 1) % this.N;
+        }
+    }
+    get N() { return this.positions.length; }
+    get position() { return this.root.transform.localPosition; }
+    set position(value) { this.root.transform.localPosition = value; }
 }

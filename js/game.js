@@ -80,14 +80,19 @@ class Game {
             for (let k = 0; k < this.armature.length; k++) {
                 let bone = this.armature[k];
                 let constraints = (k == this.armature.length - 1) ? endConstraints : anyConstraints;
-                let collision = getCollision(bone, constraints);
-                if (collision != null) {
-                    let boneAxis = bone.end.sub(bone.start).normalized();
-                    let t = collision.origin.sub(bone.start).dot(boneAxis) / bone.length;
-                    // Compute desired trajectory
-                    for (let j = 0; j <= k; j++) {
-                        let desiredFix = boneTrack(this.armature[j], collision.origin.add(collision.offset), bone, Number.POSITIVE_INFINITY, t);
-                        this.armature[j].angle += desiredFix;
+                for (let iter = 0; iter < MAX_ITER; iter++) {
+                    let collision = getCollision(bone, constraints);
+                    if (collision != null) {
+                        let boneAxis = bone.end.sub(bone.start).normalized();
+                        let t = collision.origin.sub(bone.start).dot(boneAxis) / bone.length;
+                        // Compute desired trajectory
+                        for (let j = 0; j <= k; j++) {
+                            let desiredFix = boneTrack(this.armature[j], collision.origin.add(collision.offset), bone, Math.PI * FRAME_INTERVAL / 1000 / MAX_ITER, t);
+                            this.armature[j].angle += desiredFix;
+                        }
+                    }
+                    else {
+                        break;
                     }
                 }
             }
@@ -112,5 +117,10 @@ class Game {
                 this.armature[i].render(this.ctx);
             }
         }
+    }
+    searchComponents(cls) {
+        return this.components.filter(function (x) {
+            return x instanceof cls;
+        });
     }
 }

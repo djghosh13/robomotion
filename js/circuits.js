@@ -18,17 +18,21 @@ class Light {
     render(ctx) {
         ctx.lineWidth = 3;
         ctx.strokeStyle = `hsl(${this.hue}, 70%, 20%)`;
+        ctx.fillStyle = `hsl(${this.hue}, 60%, 10%)`;
         if (this.on) {
             ctx.strokeStyle = `hsl(${this.hue}, 90%, 60%)`;
+        }
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, 10, 0, TWO_PI);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        if (this.on) {
             ctx.beginPath();
             ctx.arc(this.position.x, this.position.y, 4, 0, TWO_PI);
             ctx.stroke();
             ctx.closePath();
         }
-        ctx.beginPath();
-        ctx.arc(this.position.x, this.position.y, 10, 0, TWO_PI);
-        ctx.stroke();
-        ctx.closePath();
     }
     set input(value) {
         this.on = (value == 1);

@@ -14,9 +14,25 @@ ARMATURE_PRESETS.set("example_level", buildArmGraphics({
 var game = new Game();
 game.armature = ARMATURE_PRESETS.get("example_level")!;
 game.components = [];
+// new SimpleObstacle(new ConvexPolygonCollider([
+//     new Vector(530, 720), new Vector(530, 680),
+//     new Vector(650, 680), new Vector(650, 720),
+// ])),
+// new SimpleObstacle(new ConvexPolygonCollider([
+//     new Vector(520, 720), new Vector(520, 580),
+//     new Vector(540, 580), new Vector(540, 720),
+// ])),
+// new SimpleObstacle(new ConvexPolygonCollider([
+//     new Vector(640, 720), new Vector(640, 580),
+//     new Vector(660, 580), new Vector(660, 720),
+// ])),
 game.components.push(
     // Wire lights
-
+    new WireLight([
+        new Vector(530, 660), new Vector(650, 660),
+        new Vector(650, 630), new Vector(530, 630),
+        new Vector(530, 600), new Vector(650, 600)
+    ], 200),
     // Obstacles
     new SimpleObstacle(new ConvexPolygonCollider([
         new Vector(70, 0), new Vector(70, 100),
@@ -107,33 +123,53 @@ game.components.push(
         speed: 2, length: 85, maxLength: 125
     }),
     new ChainPull(new Vector(650, 40), {
-        speed: 2, length: 85, maxLength: 125
+        speed: 2, length: 100, maxLength: 140
     }),
 
     new Lever(new Vector(515, 645), new Vector(-1, 0), {
-        speed: 0.5, length: 50, maxRotation: Math.PI / 4
+        speed: 2, length: 50, maxRotation: Math.PI / 4
     }),
     new SimpleObstacle(new ConvexPolygonCollider([
         new Vector(520, 620), new Vector(510, 620),
         new Vector(510, 670), new Vector(520, 670),
     ])),
 
-    new SimpleObject(new Vector(50, 490)),
-    // Aesthetics
+    new SimpleObject(new Vector(50, 490), { width: 40 }),
 
+    new Carrier(game.armature[0].parent!, [
+        new Vector(280, 380),
+        new Vector(580, 415)
+    ], { speed: 200 }),
+    // Aesthetics
+    new Light(new Vector(115, 50)),
+    new Light(new Vector(445, 50)),
+    new Light(new Vector(50, 565), 5),
 );
 
-// for (let i = 0; i < 4; i++) {
-//     let button = game.components[2*i + 6];
-//     let wireLight = game.components[i];
-//     let light = game.components[i + 14];
-//     if (iofIOutputter(button) && iofIInputter(wireLight) && iofIInputter(light)) {
-//         game.components.push(
-//             new SimpleCircuit(button, wireLight),
-//             new SimpleCircuit(button, light)
-//         );
-//     }
-// }
+// Manually link up for now
+for (let i = 0; i < 3; i++) {
+    game.components.push(
+        new SimpleCircuit(
+            game.searchComponents<Button>(Button)[i],
+            game.searchComponents<Light>(Light)[i]
+        )
+    );
+}
+game.components.push(
+    new SimpleCircuit(
+        game.searchComponents<ChainPull>(ChainPull)[0],
+        game.searchComponents<Carrier>(Carrier)[0]
+    ),
+    new SimpleCircuit(
+        game.searchComponents<ChainPull>(ChainPull)[1],
+        game.searchComponents<Carrier>(Carrier)[0]
+    ),
+    new SimpleCircuit(
+        game.searchComponents<Lever>(Lever)[0],
+        game.searchComponents<WireLight>(WireLight)[0]
+    ),
+);
+
 
 var run = true;
 var mousePosition = new Vector(100, 100);
@@ -147,7 +183,7 @@ function setup(ctx: CanvasRenderingContext2D) {
     ctx.strokeStyle = "white";
     ctx.fillStyle = "white";
     ctx.lineCap = "round";
-    background(ctx, "#180F26");
+    background(ctx, "#1a1620");
 }
 
 function background(ctx: CanvasRenderingContext2D, color: string) {
@@ -166,23 +202,6 @@ function update(ctx: CanvasRenderingContext2D) {
 
 document.onreadystatechange = function(event) {
     if (document.readyState == "complete") {
-        // Set up selector
-        let selector = document.querySelector("#armature")!;
-        for (let key of ARMATURE_PRESETS.keys()) {
-            let element = document.createElement("option");
-            element.setAttribute("value", key);
-            element.innerText = key;
-            selector?.appendChild(element);
-        }
-        selector.addEventListener("change", function(event) {
-            if (event.target instanceof HTMLSelectElement) {
-                let result = ARMATURE_PRESETS.get(event.target.value);
-                if (result != null) {
-                    game.armature = result;
-                }
-            }
-        });
-        selector.querySelector("option[value=retracting_arm]")?.setAttribute("selected", "selected");
         // Set up canvas
         let canvas = document.querySelector("#simulation");
         if (canvas instanceof HTMLCanvasElement) {
