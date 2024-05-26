@@ -1,12 +1,12 @@
-const FRAME_INTERVAL = 20;
+const FRAME_INTERVAL = 17;
 const ARMATURE_PRESETS = new Map();
 ARMATURE_PRESETS.set("example_level", buildArmGraphics({
     root: [280, 380],
     bones: [
-        { length: 110, speed: 1, width: 30 },
-        { length: 80, speed: 1.5, width: 20 },
-        { length: 60, speed: 2.5, width: 20 },
-        { length: 45, speed: 3, width: 18 }
+        { length: 110, speed: 1.5, width: 30 },
+        { length: 80, speed: 2.5, width: 20 },
+        { length: 60, speed: 3, width: 20 },
+        { length: 45, speed: 2.5, width: 18 }
     ]
 }));
 var game = new Game();

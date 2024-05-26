@@ -105,18 +105,39 @@ class Game {
     }
     render() {
         setup(this.ctx);
+        // Draw regular components in order
+        for (let componentType of [WireLight, Carrier, Button, Lever, ChainPull, SimpleObstacle, Light]) {
+            for (let comp of this.searchComponents(componentType)) {
+                comp.render(this.ctx);
+            }
+        }
+        // Draw unheld objects
+        for (let comp of this.searchComponents(SimpleObject)) {
+            if (comp != this.heldObject) {
+                comp.render(this.ctx);
+            }
+        }
+        // Draw armature
+        for (let i = 0; i < this.armature.length - 1; i++) {
+            this.armature[i].render(this.ctx);
+        }
+        // Draw held object
+        if (this.heldObject != null && this.heldObject instanceof SimpleObject) {
+            this.heldObject.render(this.ctx);
+        }
+        // Draw grabber arm
+        this.armature[this.armature.length - 1].renderGrabber(this.ctx);
+    }
+    renderSimple() {
+        setup(this.ctx);
         for (let comp of this.components) {
             comp.render(this.ctx);
         }
         // Draw armature
-        for (let i = 0; i < this.armature.length; i++) {
-            if (i == this.armature.length - 1) {
-                this.armature[i].renderGrabber(this.ctx);
-            }
-            else {
-                this.armature[i].render(this.ctx);
-            }
+        for (let i = 0; i < this.armature.length - 1; i++) {
+            this.armature[i].render(this.ctx);
         }
+        this.armature[this.armature.length - 1].renderGrabber(this.ctx);
     }
     searchComponents(cls) {
         return this.components.filter(function (x) {
