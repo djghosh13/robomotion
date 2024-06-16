@@ -258,8 +258,10 @@ class ConvexPolygonCollider extends Collider {
         let boneNormal = boneAxis.rotate90();
         let tMin = bone.start.dot(boneAxis);
         let tMax = bone.end.dot(boneAxis);
-        let farthestDistance = 0;
-        let farthestPoint = null;
+        let farthestNegativeDistance = 0;
+        let farthestNegativePoint = null;
+        let farthestPositiveDistance = 0;
+        let farthestPositivePoint = null;
         let seenNegativeMin = false, seenNegativeMax = false, seenPositiveMin = false, seenPositiveMax = false;
         for (let i = 0; i < this.N; i++) {
             let t = this.points[i].dot(boneAxis);
@@ -267,23 +269,45 @@ class ConvexPolygonCollider extends Collider {
             if (dist < 0) {
                 seenNegativeMin || (seenNegativeMin = tMin < t);
                 seenNegativeMax || (seenNegativeMax = t < tMax);
+                if (tMin < t && t < tMax) {
+                    if (Math.abs(dist) > farthestNegativeDistance) {
+                        farthestNegativeDistance = Math.abs(dist);
+                        farthestNegativePoint = this.points[i];
+                    }
+                }
             }
             else if (dist > 0) {
                 seenPositiveMin || (seenPositiveMin = tMin < t);
                 seenPositiveMax || (seenPositiveMax = t < tMax);
-            }
-            if (tMin < t && t < tMax) {
-                if (Math.abs(dist) > farthestDistance) {
-                    farthestDistance = Math.abs(dist);
-                    farthestPoint = this.points[i];
+                if (tMin < t && t < tMax) {
+                    if (Math.abs(dist) > farthestPositiveDistance) {
+                        farthestPositiveDistance = Math.abs(dist);
+                        farthestPositivePoint = this.points[i];
+                    }
                 }
             }
         }
-        if (seenNegativeMin && seenNegativeMax && seenPositiveMin && seenPositiveMax && farthestPoint != null) {
-            return {
-                origin: bone.start.add(boneAxis.mul(farthestPoint.sub(bone.start).dot(boneAxis))),
-                offset: boneNormal.mul(farthestPoint.sub(bone.start).dot(boneNormal))
-            };
+        if (seenNegativeMin && seenNegativeMax && seenPositiveMin && seenPositiveMax) {
+            // Discount farther away possibility
+            if (farthestNegativeDistance < farthestPositiveDistance) {
+                farthestPositivePoint = null;
+            }
+            else {
+                farthestNegativePoint = null;
+            }
+            // Move towards closer point
+            if (farthestNegativePoint != null) {
+                return {
+                    origin: bone.start.add(boneAxis.mul(farthestNegativePoint.sub(bone.start).dot(boneAxis))),
+                    offset: boneNormal.mul(farthestNegativePoint.sub(bone.start).dot(boneNormal))
+                };
+            }
+            else if (farthestPositivePoint != null) {
+                return {
+                    origin: bone.start.add(boneAxis.mul(farthestPositivePoint.sub(bone.start).dot(boneAxis))),
+                    offset: boneNormal.mul(farthestPositivePoint.sub(bone.start).dot(boneNormal))
+                };
+            }
         }
         return null;
     }
