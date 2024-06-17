@@ -22,6 +22,7 @@ abstract class Collider {
         };
     }
     abstract getCollision(bone: Bone): Collision | null;
+    abstract getObjectCollision(object: CircleCollider): Collision | null;
     abstract render(ctx: CanvasRenderingContext2D): void;
 }
 
@@ -37,24 +38,13 @@ function getCollision(bone: Bone, colliders: Collider[]) {
     return null;
 }
 
-function fixCollisions(base: Bone, tracking: Bone, colliders: Collider[]) {
-    // Collision adjustment
-    // TODO
-    for (let collider of colliders) {
-        let collision = collider.getCollision(tracking);
-        if (collision != null) {
-            return true;
-        }
-    }
-    return false;
-}
-
 
 class NullCollider extends Collider {
     constructor() {
         super({ });
     }
     getCollision(bone: Bone) { return null; }
+    getObjectCollision(object: CircleCollider) { return null; }
     render(ctx: CanvasRenderingContext2D) { }
 }
 
@@ -87,6 +77,25 @@ class CircleCollider extends Collider {
             return {
                 origin: closestPoint,
                 offset: closestPoint.sub(this.center).mul((this.radius - distance) / distance)
+            };
+        }
+        return null;
+    }
+    getObjectCollision(object: CircleCollider) {
+        const EPSILON = 1e-6;
+        let disp = object.center.sub(this.center);
+        let distance = disp.norm;
+        if (distance < EPSILON) {
+            // Concentric circles, choose arbitrary direction
+            return {
+                origin: object.center,
+                offset: new Vector(this.radius, 0)
+            };
+        }
+        if (distance < this.radius + object.radius) {
+            return {
+                origin: object.center.sub(disp.mul(object.radius / distance)),
+                offset: disp.mul((this.radius + object.radius - distance) / distance)
             };
         }
         return null;
@@ -131,6 +140,10 @@ class EllipseConstraint extends Collider {
         }
         return null;
     }
+    getObjectCollision(object: CircleCollider) {
+        // TODO
+        return null;
+    }
     render(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
         ctx.ellipse(this.center.x, this.center.y, this.major, this.minor, this.angle, 0, TWO_PI);
@@ -156,6 +169,10 @@ class CircleConstraint extends Collider {
         }
         return null;
     }
+    getObjectCollision(object: CircleCollider) {
+        // TODO
+        return null;
+    }
     render(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
         ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
@@ -176,6 +193,16 @@ class HalfPlaneCollider extends Collider {
             return {
                 origin: closestPoint,
                 offset: this.normal.mul(-distance)
+            };
+        }
+        return null;
+    }
+    getObjectCollision(object: CircleCollider) {
+        let distance = object.center.sub(this.point).dot(this.normal);
+        if (distance < object.radius) {
+            return {
+                origin: object.center.sub(this.normal.mul(object.radius)),
+                offset: this.normal.mul(object.radius - distance)
             };
         }
         return null;
@@ -234,6 +261,25 @@ class ConvexPolygonCollider extends Collider {
             }
         }
         return bestCollision;
+    }
+    getObjectCollision(object: CircleCollider) {
+        // Intersection of half-plane collisions
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        let nearestCollision: Collision | null = null;
+        for (let i = 0; i < this.N; i++) {
+            let halfPlaneCollider = new HalfPlaneCollider(this.points[i], this.normals[i]);
+            let collision = halfPlaneCollider.getObjectCollision(object);
+            if (collision != null) {
+                let distance = collision.offset.norm2;
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestCollision = collision;
+                }
+            } else {
+                return null;
+            }
+        }
+        return nearestCollision;
     }
     render(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
