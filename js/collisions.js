@@ -23,22 +23,22 @@ function getCollision(bone, colliders) {
     }
     return null;
 }
-function fixCollisions(base, tracking, colliders) {
-    // Collision adjustment
-    // TODO
+function getObjectCollision(object, colliders) {
+    // Simple circle collision check
     for (let collider of colliders) {
-        let collision = collider.getCollision(tracking);
+        let collision = collider.getObjectCollision(object);
         if (collision != null) {
-            return true;
+            return collision;
         }
     }
-    return false;
+    return null;
 }
 class NullCollider extends Collider {
     constructor() {
         super({});
     }
     getCollision(bone) { return null; }
+    getObjectCollision(object) { return null; }
     render(ctx) { }
 }
 class CircleCollider extends Collider {
@@ -75,68 +75,21 @@ class CircleCollider extends Collider {
         }
         return null;
     }
-    render(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
-        ctx.closePath();
-        ctx.stroke();
-    }
-}
-class EllipseConstraint extends Collider {
-    constructor(center, major, minor, angle, props) {
-        super(props || {});
-        this.center = center;
-        this.major = major;
-        this.minor = minor;
-        this.angle = angle;
-    }
-    getCollision(bone) {
-        // Only constrain end of bone
-        let offset = bone.end.sub(this.center).rotate(-this.angle);
-        let distance = new Vector(offset.x / this.major, offset.y / this.minor).norm2;
-        if (distance > 1) {
-            // Newton's method for theta
-            let theta = offset.angle;
-            const EPSILON = 1e-6;
-            for (let i = 0; i < 5; i++) {
-                let fp = ((this.minor * this.minor - this.major * this.major) * Math.cos(2 * theta)
-                    + this.major * offset.x * Math.cos(theta) + this.minor * offset.y * Math.sin(theta));
-                if (Math.abs(fp) < EPSILON) {
-                    break;
-                }
-                let f = ((this.minor * this.minor - this.major * this.major) / 2 * Math.sin(2 * theta)
-                    + this.major * offset.x * Math.sin(theta) - this.minor * offset.y * Math.cos(theta));
-                theta -= f / fp;
-            }
-            let closestPoint = new Vector(this.major * Math.cos(theta), this.minor * Math.sin(theta));
+    getObjectCollision(object) {
+        const EPSILON = 1e-6;
+        let disp = object.center.sub(this.center);
+        let distance = disp.norm;
+        if (distance < EPSILON) {
+            // Concentric circles, choose arbitrary direction
             return {
-                origin: bone.end,
-                offset: closestPoint.sub(offset).rotate(this.angle)
+                origin: object.center,
+                offset: new Vector(this.radius, 0)
             };
         }
-        return null;
-    }
-    render(ctx) {
-        ctx.beginPath();
-        ctx.ellipse(this.center.x, this.center.y, this.major, this.minor, this.angle, 0, TWO_PI);
-        ctx.closePath();
-        ctx.stroke();
-    }
-}
-class CircleConstraint extends Collider {
-    constructor(center, radius, props) {
-        super(props || {});
-        this.center = center;
-        this.radius = radius;
-    }
-    getCollision(bone) {
-        // Only constrain end of bone
-        let distance = bone.end.sub(this.center).norm;
-        if (distance > this.radius) {
-            // Move inwards by distance - radius
+        if (distance < this.radius + object.radius) {
             return {
-                origin: bone.end,
-                offset: bone.end.sub(this.center).mul((this.radius - distance) / distance)
+                origin: object.center.sub(disp.mul(object.radius / distance)),
+                offset: disp.mul((this.radius + object.radius - distance) / distance)
             };
         }
         return null;
@@ -161,6 +114,16 @@ class HalfPlaneCollider extends Collider {
             return {
                 origin: closestPoint,
                 offset: this.normal.mul(-distance)
+            };
+        }
+        return null;
+    }
+    getObjectCollision(object) {
+        let distance = object.center.sub(this.point).dot(this.normal);
+        if (distance < object.radius) {
+            return {
+                origin: object.center.sub(this.normal.mul(object.radius)),
+                offset: this.normal.mul(object.radius - distance)
             };
         }
         return null;
@@ -217,6 +180,26 @@ class ConvexPolygonCollider extends Collider {
             }
         }
         return bestCollision;
+    }
+    getObjectCollision(object) {
+        // Intersection of half-plane collisions
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        let nearestCollision = null;
+        for (let i = 0; i < this.N; i++) {
+            let halfPlaneCollider = new HalfPlaneCollider(this.points[i], this.normals[i]);
+            let collision = halfPlaneCollider.getObjectCollision(object);
+            if (collision != null) {
+                let distance = collision.offset.norm2;
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestCollision = collision;
+                }
+            }
+            else {
+                return null;
+            }
+        }
+        return nearestCollision;
     }
     render(ctx) {
         ctx.beginPath();

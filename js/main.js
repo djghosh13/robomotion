@@ -100,7 +100,9 @@ new Button(new Vector(115, 280), new Vector(0, 1), {
 }), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(520, 620), new Vector(510, 620),
     new Vector(510, 670), new Vector(520, 670),
-])), new SimpleObject(new Vector(50, 490), { width: 40 }), new Carrier(game.armature[0].parent, [
+])), 
+// Attractors
+new SimpleAttractor(new Vector(115, 165), { radius: 40 }), new SimpleAttractor(new Vector(445, 165), { radius: 40 }), new SimpleAttractor(new Vector(590, 630), { radius: 40 }), new SimpleAttractor(new Vector(820, 540), { radius: 40 }), new SimpleObject(new Vector(50, 490), { width: 40 }), new Carrier(game.armature[0].parent, [
     new Vector(280, 380),
     new Vector(580, 415)
 ], { speed: 200 }), 

@@ -134,6 +134,12 @@ game.components.push(
         new Vector(510, 670), new Vector(520, 670),
     ])),
 
+    // Attractors
+    new SimpleAttractor(new Vector(115, 165), { radius: 40 }),
+    new SimpleAttractor(new Vector(445, 165), { radius: 40 }),
+    new SimpleAttractor(new Vector(590, 630), { radius: 40 }),
+    new SimpleAttractor(new Vector(820, 540), { radius: 40 }),
+
     new SimpleObject(new Vector(50, 490), { width: 40 }),
 
     new Carrier(game.armature[0].parent!, [

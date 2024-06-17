@@ -31,48 +31,6 @@ class SimpleObstacle implements IComponent, ICollidable {
     }
 }
 
-class SimpleObject implements IComponent, IGrabbable {
-    velocity: Vector;
-    width: number;
-    constructor(public position: Vector, { width = 20 }) {
-        this.velocity = Vector.ZERO;
-        this.width = width;
-    }
-    update(this: SimpleObject, game: Game) {
-        if (game.heldObject == this) {
-            let newPosition = game.robotArm.end;
-            this.velocity = newPosition.sub(this.position);
-            this.position = newPosition;
-        } else {
-            this.position = this.position.add(this.velocity);
-            this.velocity = this.velocity.mul(0.9);
-        }
-    }
-    render(ctx: CanvasRenderingContext2D) {
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "#A45229";
-        ctx.fillStyle = "#3B1F12";
-        ctx.beginPath();
-        ctx.moveTo(this.position.x - this.width/2, this.position.y - this.width/2);
-        ctx.lineTo(this.position.x - this.width/2, this.position.y + this.width/2);
-        ctx.lineTo(this.position.x + this.width/2, this.position.y + this.width/2);
-        ctx.lineTo(this.position.x + this.width/2, this.position.y - this.width/2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-    }
-    get handle() {
-        let bound = this.width/2 + 5;
-        return new ConvexPolygonCollider([
-            this.position.sub(new Vector(-bound, -bound)),
-            this.position.sub(new Vector(-bound, bound)),
-            this.position.sub(new Vector(bound, bound)),
-            this.position.sub(new Vector(bound, -bound))
-        ]);
-    }
-    adjustTarget(target: Vector) { return target; }
-}
-
 
 interface IOutputter {
     get output(): number;

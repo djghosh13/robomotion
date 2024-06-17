@@ -16,47 +16,6 @@ class SimpleObstacle {
         this.collider.render(ctx);
     }
 }
-class SimpleObject {
-    constructor(position, { width = 20 }) {
-        this.position = position;
-        this.velocity = Vector.ZERO;
-        this.width = width;
-    }
-    update(game) {
-        if (game.heldObject == this) {
-            let newPosition = game.robotArm.end;
-            this.velocity = newPosition.sub(this.position);
-            this.position = newPosition;
-        }
-        else {
-            this.position = this.position.add(this.velocity);
-            this.velocity = this.velocity.mul(0.9);
-        }
-    }
-    render(ctx) {
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "#A45229";
-        ctx.fillStyle = "#3B1F12";
-        ctx.beginPath();
-        ctx.moveTo(this.position.x - this.width / 2, this.position.y - this.width / 2);
-        ctx.lineTo(this.position.x - this.width / 2, this.position.y + this.width / 2);
-        ctx.lineTo(this.position.x + this.width / 2, this.position.y + this.width / 2);
-        ctx.lineTo(this.position.x + this.width / 2, this.position.y - this.width / 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-    }
-    get handle() {
-        let bound = this.width / 2 + 5;
-        return new ConvexPolygonCollider([
-            this.position.sub(new Vector(-bound, -bound)),
-            this.position.sub(new Vector(-bound, bound)),
-            this.position.sub(new Vector(bound, bound)),
-            this.position.sub(new Vector(bound, -bound))
-        ]);
-    }
-    adjustTarget(target) { return target; }
-}
 function iofIOutputter(object) {
     return "output" in object;
 }

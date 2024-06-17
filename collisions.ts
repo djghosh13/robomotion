@@ -38,6 +38,17 @@ function getCollision(bone: Bone, colliders: Collider[]) {
     return null;
 }
 
+function getObjectCollision(object: CircleCollider, colliders: Collider[]) {
+    // Simple circle collision check
+    for (let collider of colliders) {
+        let collision = collider.getObjectCollision(object);
+        if (collision != null) {
+            return collision;
+        }
+    }
+    return null;
+}
+
 
 class NullCollider extends Collider {
     constructor() {
@@ -98,79 +109,6 @@ class CircleCollider extends Collider {
                 offset: disp.mul((this.radius + object.radius - distance) / distance)
             };
         }
-        return null;
-    }
-    render(ctx: CanvasRenderingContext2D) {
-        ctx.beginPath();
-        ctx.arc(this.center.x, this.center.y, this.radius, 0, TWO_PI);
-        ctx.closePath();
-        ctx.stroke();
-    }
-}
-
-
-class EllipseConstraint extends Collider {
-    constructor(public center: Vector, public major: number, public minor: number, public angle: number,
-            props?: ColliderProperties) {
-        super(props || {});
-    }
-    getCollision(bone: Bone) {
-        // Only constrain end of bone
-        let offset = bone.end.sub(this.center).rotate(-this.angle);
-        let distance = new Vector(offset.x / this.major, offset.y / this.minor).norm2;
-        if (distance > 1) {
-            // Newton's method for theta
-            let theta = offset.angle;
-            const EPSILON = 1e-6;
-            for (let i = 0; i < 5; i++) {
-                let fp = ((this.minor*this.minor - this.major*this.major)*Math.cos(2*theta)
-                    + this.major*offset.x*Math.cos(theta) + this.minor*offset.y*Math.sin(theta));
-                if (Math.abs(fp) < EPSILON) {
-                    break;
-                }
-                let f = ((this.minor*this.minor - this.major*this.major)/2*Math.sin(2*theta)
-                    + this.major*offset.x*Math.sin(theta) - this.minor*offset.y*Math.cos(theta));
-                theta -= f / fp;
-            }
-            let closestPoint = new Vector(this.major*Math.cos(theta), this.minor*Math.sin(theta));
-            return {
-                origin: bone.end,
-                offset: closestPoint.sub(offset).rotate(this.angle)
-            };
-        }
-        return null;
-    }
-    getObjectCollision(object: CircleCollider) {
-        // TODO
-        return null;
-    }
-    render(ctx: CanvasRenderingContext2D) {
-        ctx.beginPath();
-        ctx.ellipse(this.center.x, this.center.y, this.major, this.minor, this.angle, 0, TWO_PI);
-        ctx.closePath();
-        ctx.stroke();
-    }
-}
-
-
-class CircleConstraint extends Collider {
-    constructor(public center: Vector, public radius: number, props?: ColliderProperties) {
-        super(props || {});
-    }
-    getCollision(bone: Bone) {
-        // Only constrain end of bone
-        let distance = bone.end.sub(this.center).norm;
-        if (distance > this.radius) {
-            // Move inwards by distance - radius
-            return {
-                origin: bone.end,
-                offset: bone.end.sub(this.center).mul((this.radius - distance) / distance)
-            };
-        }
-        return null;
-    }
-    getObjectCollision(object: CircleCollider) {
-        // TODO
         return null;
     }
     render(ctx: CanvasRenderingContext2D) {
