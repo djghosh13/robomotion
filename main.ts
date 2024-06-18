@@ -14,18 +14,6 @@ ARMATURE_PRESETS.set("example_level", buildArmGraphics({
 var game = new Game();
 game.armature = ARMATURE_PRESETS.get("example_level")!;
 game.components = [];
-// new SimpleObstacle(new ConvexPolygonCollider([
-//     new Vector(530, 720), new Vector(530, 680),
-//     new Vector(650, 680), new Vector(650, 720),
-// ])),
-// new SimpleObstacle(new ConvexPolygonCollider([
-//     new Vector(520, 720), new Vector(520, 580),
-//     new Vector(540, 580), new Vector(540, 720),
-// ])),
-// new SimpleObstacle(new ConvexPolygonCollider([
-//     new Vector(640, 720), new Vector(640, 580),
-//     new Vector(660, 580), new Vector(660, 720),
-// ])),
 game.components.push(
     // Wire lights
     new WireLight([
@@ -135,8 +123,8 @@ game.components.push(
     ])),
 
     // Attractors
-    new SimpleAttractor(new Vector(115, 165), { radius: 40 }),
-    new SimpleAttractor(new Vector(445, 165), { radius: 40 }),
+    new SimpleAttractor(new Vector(115, 175), { radius: 40 }),
+    new SimpleAttractor(new Vector(445, 175), { radius: 40 }),
     new SimpleAttractor(new Vector(590, 630), { radius: 40 }),
     new SimpleAttractor(new Vector(820, 540), { radius: 40 }),
 

@@ -102,7 +102,7 @@ new Button(new Vector(115, 280), new Vector(0, 1), {
     new Vector(510, 670), new Vector(520, 670),
 ])), 
 // Attractors
-new SimpleAttractor(new Vector(115, 165), { radius: 40 }), new SimpleAttractor(new Vector(445, 165), { radius: 40 }), new SimpleAttractor(new Vector(590, 630), { radius: 40 }), new SimpleAttractor(new Vector(820, 540), { radius: 40 }), new SimpleObject(new Vector(50, 490), { width: 40 }), new Carrier(game.armature[0].parent, [
+new SimpleAttractor(new Vector(115, 175), { radius: 40 }), new SimpleAttractor(new Vector(445, 175), { radius: 40 }), new SimpleAttractor(new Vector(590, 630), { radius: 40 }), new SimpleAttractor(new Vector(820, 540), { radius: 40 }), new SimpleObject(new Vector(50, 490), { width: 40 }), new Carrier(game.armature[0].parent, [
     new Vector(280, 380),
     new Vector(580, 415)
 ], { speed: 200 }), 

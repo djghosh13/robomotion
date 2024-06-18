@@ -78,11 +78,13 @@ class SimpleObject extends PhysicsObject implements IGrabbable {
 class SimpleAttractor implements IComponent {
     radius: number;
     speed: number;
+    heldObject: SimpleObject | null;
     constructor(public position: Vector, { radius = 20, speed = 1 }) {
         this.radius = radius, this.speed = speed;
+        this.heldObject = null;
     }
     update(game: Game) {
-        // Get closest SimpleObject
+        // Get closest SimpleObject within range
         let objects = game.searchComponents<SimpleObject>(SimpleObject);
         if (objects.length > 0) {
             let targetObject = objects.reduce((a, b) => {
@@ -90,9 +92,11 @@ class SimpleAttractor implements IComponent {
                     ? b : a;
             });
             let offset = targetObject.position.sub(this.position);
-            if (offset.norm2 < this.radius * this.radius) {
-                targetObject.position = targetObject.position.sub(offset.normalized().mul(
-                    Math.min(this.radius * this.speed * FRAME_INTERVAL / 1000, offset.norm)
+            let t = offset.norm / this.radius;
+            if (t < 1) {
+                this.heldObject = targetObject;
+                targetObject.velocity = targetObject.velocity.sub(offset.normalized().mul(
+                    this.radius * this.speed * FRAME_INTERVAL / 1000 * t
                 ));
             }
         }
