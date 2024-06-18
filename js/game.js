@@ -119,6 +119,12 @@ class Game {
         }
         // Draw grabber arm
         this.armature[this.armature.length - 1].renderGrabber(this.ctx);
+        // Draw glass containers
+        for (let componentType of [FireworkSpawner, FireworkFiller]) {
+            for (let comp of this.searchComponents(componentType)) {
+                comp.render(this.ctx);
+            }
+        }
     }
     searchComponents(cls) {
         return this.components.filter(function (x) {

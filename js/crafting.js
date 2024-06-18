@@ -55,6 +55,57 @@ class FireworkBox extends SimpleObject {
         ctx.stroke();
     }
 }
+class FireworkFiller extends SimpleAttractor {
+    constructor(position, element, time, topLeft, bottomRight, { radius = 40, speed = 1 }) {
+        super(position, { radius: radius, speed: speed });
+        this.element = element;
+        this.time = time;
+        this.topLeft = topLeft;
+        this.input = 0;
+        this.firework = null;
+        this.fillTime = 0;
+        this.dimensions = bottomRight.sub(this.topLeft);
+    }
+    update(game) {
+        super.update(game);
+        // Reset progress if firework box is removed
+        if (this.firework != this.heldObject) {
+            this.firework = null;
+            this.fillTime = 0;
+        }
+        // Start counter if firework box is present and filler is activated
+        if (this.input == 1 && this.firework == null) {
+            if (this.heldObject instanceof FireworkBox) {
+                this.firework = this.heldObject;
+            }
+        }
+        // Fill firework if time is reached
+        if (this.firework != null) {
+            this.fillTime += FRAME_INTERVAL / 1000;
+            if (this.fillTime >= this.time) {
+                this.firework.addElement(this.element);
+                this.firework = null;
+                this.fillTime = 0;
+            }
+        }
+    }
+    render(ctx) {
+        ctx.fillStyle = "hsla(0, 0%, 90%, 15%)";
+        ctx.beginPath();
+        ctx.rect(this.topLeft.x, this.topLeft.y, this.dimensions.x, this.dimensions.y);
+        ctx.closePath();
+        ctx.fill();
+        if (this.firework != null) {
+            ctx.fillStyle = "hsla(0, 0%, 90%, 40%)";
+            ctx.beginPath();
+            let top = 1.1 * this.fillTime / this.time - 0.1;
+            let bottom = Math.min(top + 0.1, 1);
+            ctx.rect(this.topLeft.x, this.topLeft.y + this.dimensions.y * Math.max(top, 0), this.dimensions.x, this.dimensions.y * (bottom - Math.max(top, 0)));
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+}
 class FireworkSpawner {
     constructor(position, capacity, elements) {
         this.position = position;

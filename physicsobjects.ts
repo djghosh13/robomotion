@@ -85,6 +85,7 @@ class SimpleAttractor implements IComponent {
     }
     update(game: Game) {
         // Get closest SimpleObject within range
+        this.heldObject = null;
         let objects = game.searchComponents<SimpleObject>(SimpleObject);
         if (objects.length > 0) {
             let targetObject = objects.reduce((a, b) => {

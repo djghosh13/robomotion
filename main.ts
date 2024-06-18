@@ -123,8 +123,16 @@ game.components.push(
     ])),
 
     // Attractors
-    new SimpleAttractor(new Vector(115, 175), { radius: 40 }),
-    new SimpleAttractor(new Vector(445, 175), { radius: 40 }),
+    new FireworkFiller(
+        new Vector(115, 175), FireworkElement.COPPER, 3,
+        new Vector(75, 100), new Vector(155, 230),
+        { radius: 40 }
+    ),
+    new FireworkFiller(
+        new Vector(445, 175), FireworkElement.STRONTIUM, 3,
+        new Vector(405, 100), new Vector(485, 230),
+        { radius: 40 }
+    ),
     new SimpleAttractor(new Vector(590, 630), { radius: 40 }),
     new SimpleAttractor(new Vector(820, 540), { radius: 40 }),
 
@@ -166,8 +174,19 @@ game.components.push(
         game.searchComponents<Button>(Button)[2],
         game.searchComponents<FireworkSpawner>(FireworkSpawner)[0],
         1
+    ),
+    new ActivatorCircuit(
+        game.searchComponents<Button>(Button)[0],
+        game.searchComponents<FireworkFiller>(FireworkFiller)[0],
+        1
+    ),
+    new ActivatorCircuit(
+        game.searchComponents<Button>(Button)[1],
+        game.searchComponents<FireworkFiller>(FireworkFiller)[1],
+        1
     )
 );
+game.searchComponents<FireworkSpawner>(FireworkSpawner)[0].input = 1;
 
 
 var run = true;

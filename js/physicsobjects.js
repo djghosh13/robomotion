@@ -80,6 +80,7 @@ class SimpleAttractor {
     }
     update(game) {
         // Get closest SimpleObject within range
+        this.heldObject = null;
         let objects = game.searchComponents(SimpleObject);
         if (objects.length > 0) {
             let targetObject = objects.reduce((a, b) => {
