@@ -6,6 +6,26 @@ class SimpleCircuit implements IComponent {
     render(ctx: CanvasRenderingContext2D) { }
 }
 
+class ActivatorCircuit implements IComponent {
+    lastInput: number;
+    onCooldown: number;
+    constructor(public activator: IOutputter, public responder: IInputter, public cooldown: number) {
+        this.lastInput = 0;
+        this.onCooldown = 0;
+    }
+    update(game: Game): void {
+        this.onCooldown = Math.max(this.onCooldown - FRAME_INTERVAL / 1000, 0);
+        let justActivated = (this.lastInput < 1) && (this.activator.output == 1);
+        if (justActivated && this.onCooldown == 0) {
+            this.responder.input = 1;
+            this.onCooldown = this.cooldown;
+        } else {
+            this.responder.input = 0;
+        }
+    }
+    render(ctx: CanvasRenderingContext2D) { }
+}
+
 class Light implements IComponent, IInputter {
     constructor(public position: Vector, public hue: number = 134, public on: boolean = false) { }
     update(game: Game) { }

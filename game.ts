@@ -125,20 +125,18 @@ class Game {
         // Draw grabber arm
         this.armature[this.armature.length - 1].renderGrabber(this.ctx);
     }
-    renderSimple() {
-        setup(this.ctx);
-        for (let comp of this.components) {
-            comp.render(this.ctx);
-        }
-        // Draw armature
-        for (let i = 0; i < this.armature.length - 1; i++) {
-            this.armature[i].render(this.ctx);
-        }
-        this.armature[this.armature.length - 1].renderGrabber(this.ctx);
-    }
     searchComponents<Type extends IComponent>(cls: any): Type[] {
         return this.components.filter(function (x): x is Type {
             return x instanceof cls;
         });
+    }
+    spawnObject(object: IComponent) {
+        this.components.push(object);
+    }
+    destroyObject(object: IComponent) {
+        let index = this.components.indexOf(object);
+        if (index != -1) {
+            this.components.splice(index, 1);
+        }
     }
 }

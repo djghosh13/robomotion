@@ -128,7 +128,7 @@ game.components.push(
     new SimpleAttractor(new Vector(590, 630), { radius: 40 }),
     new SimpleAttractor(new Vector(820, 540), { radius: 40 }),
 
-    new SimpleObject(new Vector(50, 490), { width: 40 }),
+    new FireworkSpawner(new Vector(50, 490), 3, [FireworkElement.GUNPOWDER]),
 
     new Carrier(game.armature[0].parent!, [
         new Vector(280, 380),
@@ -162,6 +162,11 @@ game.components.push(
         game.searchComponents<Lever>(Lever)[0],
         game.searchComponents<WireLight>(WireLight)[0]
     ),
+    new ActivatorCircuit(
+        game.searchComponents<Button>(Button)[2],
+        game.searchComponents<FireworkSpawner>(FireworkSpawner)[0],
+        1
+    )
 );
 
 

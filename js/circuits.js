@@ -8,6 +8,27 @@ class SimpleCircuit {
     }
     render(ctx) { }
 }
+class ActivatorCircuit {
+    constructor(activator, responder, cooldown) {
+        this.activator = activator;
+        this.responder = responder;
+        this.cooldown = cooldown;
+        this.lastInput = 0;
+        this.onCooldown = 0;
+    }
+    update(game) {
+        this.onCooldown = Math.max(this.onCooldown - FRAME_INTERVAL / 1000, 0);
+        let justActivated = (this.lastInput < 1) && (this.activator.output == 1);
+        if (justActivated && this.onCooldown == 0) {
+            this.responder.input = 1;
+            this.onCooldown = this.cooldown;
+        }
+        else {
+            this.responder.input = 0;
+        }
+    }
+    render(ctx) { }
+}
 class Light {
     constructor(position, hue = 134, on = false) {
         this.position = position;

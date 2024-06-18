@@ -12,18 +12,6 @@ ARMATURE_PRESETS.set("example_level", buildArmGraphics({
 var game = new Game();
 game.armature = ARMATURE_PRESETS.get("example_level");
 game.components = [];
-// new SimpleObstacle(new ConvexPolygonCollider([
-//     new Vector(530, 720), new Vector(530, 680),
-//     new Vector(650, 680), new Vector(650, 720),
-// ])),
-// new SimpleObstacle(new ConvexPolygonCollider([
-//     new Vector(520, 720), new Vector(520, 580),
-//     new Vector(540, 580), new Vector(540, 720),
-// ])),
-// new SimpleObstacle(new ConvexPolygonCollider([
-//     new Vector(640, 720), new Vector(640, 580),
-//     new Vector(660, 580), new Vector(660, 720),
-// ])),
 game.components.push(
 // Wire lights
 new WireLight([
@@ -102,7 +90,7 @@ new Button(new Vector(115, 280), new Vector(0, 1), {
     new Vector(510, 670), new Vector(520, 670),
 ])), 
 // Attractors
-new SimpleAttractor(new Vector(115, 175), { radius: 40 }), new SimpleAttractor(new Vector(445, 175), { radius: 40 }), new SimpleAttractor(new Vector(590, 630), { radius: 40 }), new SimpleAttractor(new Vector(820, 540), { radius: 40 }), new SimpleObject(new Vector(50, 490), { width: 40 }), new Carrier(game.armature[0].parent, [
+new SimpleAttractor(new Vector(115, 175), { radius: 40 }), new SimpleAttractor(new Vector(445, 175), { radius: 40 }), new SimpleAttractor(new Vector(590, 630), { radius: 40 }), new SimpleAttractor(new Vector(820, 540), { radius: 40 }), new FireworkSpawner(new Vector(50, 490), 3, [FireworkElement.GUNPOWDER]), new Carrier(game.armature[0].parent, [
     new Vector(280, 380),
     new Vector(580, 415)
 ], { speed: 200 }), 
@@ -112,7 +100,7 @@ new Light(new Vector(115, 50)), new Light(new Vector(445, 50)), new Light(new Ve
 for (let i = 0; i < 3; i++) {
     game.components.push(new SimpleCircuit(game.searchComponents(Button)[i], game.searchComponents(Light)[i]));
 }
-game.components.push(new SimpleCircuit(game.searchComponents(ChainPull)[0], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(ChainPull)[1], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(Lever)[0], game.searchComponents(WireLight)[0]));
+game.components.push(new SimpleCircuit(game.searchComponents(ChainPull)[0], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(ChainPull)[1], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(Lever)[0], game.searchComponents(WireLight)[0]), new ActivatorCircuit(game.searchComponents(Button)[2], game.searchComponents(FireworkSpawner)[0], 1));
 var run = true;
 var mousePosition = new Vector(100, 100);
 var isMousePressed = false;
