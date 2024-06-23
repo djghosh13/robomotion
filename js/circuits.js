@@ -29,6 +29,12 @@ class ActivatorCircuit {
     }
     render(ctx) { }
 }
+class AlwaysOn {
+    update(game) {
+        this.output = 1;
+    }
+    render(ctx) { }
+}
 class Light {
     constructor(position, hue = 134, on = false) {
         this.position = position;

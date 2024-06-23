@@ -13,7 +13,7 @@ class ActivatorCircuit implements IComponent {
         this.lastInput = 0;
         this.onCooldown = 0;
     }
-    update(game: Game): void {
+    update(game: Game) {
         this.onCooldown = Math.max(this.onCooldown - FRAME_INTERVAL / 1000, 0);
         let justActivated = (this.lastInput < 1) && (this.activator.output == 1);
         if (justActivated && this.onCooldown == 0) {
@@ -22,6 +22,14 @@ class ActivatorCircuit implements IComponent {
         } else {
             this.responder.input = 0;
         }
+    }
+    render(ctx: CanvasRenderingContext2D) { }
+}
+
+class AlwaysOn implements IComponent, IOutputter {
+    output: number;
+    update(game: Game) {
+        this.output = 1;
     }
     render(ctx: CanvasRenderingContext2D) { }
 }

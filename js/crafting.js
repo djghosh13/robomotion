@@ -1,22 +1,8 @@
-var FireworkElement;
-(function (FireworkElement) {
-    FireworkElement[FireworkElement["GUNPOWDER"] = 0] = "GUNPOWDER";
-    FireworkElement[FireworkElement["COPPER"] = 1] = "COPPER";
-    FireworkElement[FireworkElement["STRONTIUM"] = 2] = "STRONTIUM";
-})(FireworkElement || (FireworkElement = {}));
-;
-function elementColorMap(element) {
-    switch (element) {
-        case FireworkElement.GUNPOWDER:
-            return "hsl(260, 20%, 30%)";
-        case FireworkElement.COPPER:
-            return "hsl(210, 95%, 45%)";
-        case FireworkElement.STRONTIUM:
-            return "hsl(345, 95%, 45%)";
-        default:
-            throw new Error(`Missing color specification for element ${element}`);
-    }
-}
+const ELEMENT_COLOR_MAP = new Map([
+    [FireworkElement.GUNPOWDER, "hsl(260, 20%, 30%)"],
+    [FireworkElement.COPPER, "hsl(210, 95%, 45%)"],
+    [FireworkElement.STRONTIUM, "hsl(345, 95%, 45%)"],
+]);
 class FireworkBox extends SimpleObject {
     constructor(position, capacity, { width = 40 }) {
         super(position, { width: width });
@@ -37,7 +23,7 @@ class FireworkBox extends SimpleObject {
         ctx.fill();
         // Draw contents
         for (let i = 0; i < this.contents.length; i++) {
-            ctx.fillStyle = elementColorMap(this.contents[i]);
+            ctx.fillStyle = ELEMENT_COLOR_MAP.get(this.contents[i]) || "rgb(255, 0, 255)";
             ctx.beginPath();
             ctx.rect(this.position.x - this.width / 2, this.position.y + this.width / 2 - (this.width / this.capacity) * i, this.width, -this.width / this.capacity);
             ctx.closePath();
@@ -106,6 +92,20 @@ class FireworkFiller extends SimpleAttractor {
         }
     }
 }
+class FireworkPreparer extends SimpleAttractor {
+    constructor(position, { radius = 40, speed = 1 }) {
+        super(position, { radius: radius, speed: speed });
+        this.position = position;
+        this.input = 0;
+    }
+    update(game) {
+        super.update(game);
+        if (this.input == 1 && this.heldObject instanceof FireworkBox) {
+            this.heldObject.prepared = true;
+        }
+    }
+    render(ctx) { }
+}
 class FireworkSpawner {
     constructor(position, capacity, elements) {
         this.position = position;
@@ -124,6 +124,26 @@ class FireworkSpawner {
                 this.firework.addElement(element);
             }
             game.spawnObject(this.firework);
+        }
+    }
+    render(ctx) { }
+}
+class FireworkLauncher extends SimpleAttractor {
+    constructor(position, { radius = 40, speed = 1 }) {
+        super(position, { radius: radius, speed: speed });
+        this.position = position;
+        this.input = 0;
+    }
+    update(game) {
+        super.update(game);
+        if (this.input == 1 && this.heldObject instanceof FireworkBox && this.heldObject.prepared) {
+            // TODO Convoluted, fix
+            if (game.heldObject != this.heldObject && this.heldObject.velocity.norm < 1) {
+                // Fire!
+                game.spawnObject(new FireworkTrail(this.position.add(new Vector(0, -100)), 280, this.heldObject.contents));
+                game.destroyObject(this.heldObject);
+                this.heldObject = null;
+            }
         }
     }
     render(ctx) { }

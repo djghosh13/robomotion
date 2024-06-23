@@ -133,10 +133,11 @@ game.components.push(
         new Vector(405, 100), new Vector(485, 230),
         { radius: 40 }
     ),
-    new SimpleAttractor(new Vector(590, 630), { radius: 40 }),
-    new SimpleAttractor(new Vector(820, 540), { radius: 40 }),
+    new FireworkPreparer(new Vector(590, 630), { radius: 40 }),
+    new FireworkLauncher(new Vector(820, 540), { radius: 40 }),
+    new AlwaysOn(),
 
-    new FireworkSpawner(new Vector(50, 490), 3, [FireworkElement.GUNPOWDER]),
+    new FireworkSpawner(new Vector(50, 490), 4, []),
 
     new Carrier(game.armature[0].parent!, [
         new Vector(280, 380),
@@ -184,6 +185,15 @@ game.components.push(
         game.searchComponents<Button>(Button)[1],
         game.searchComponents<FireworkFiller>(FireworkFiller)[1],
         1
+    ),
+    new ActivatorCircuit(
+        game.searchComponents<Lever>(Lever)[0],
+        game.searchComponents<FireworkPreparer>(FireworkPreparer)[0],
+        1
+    ),
+    new SimpleCircuit(
+        game.searchComponents<AlwaysOn>(AlwaysOn)[0],
+        game.searchComponents<FireworkLauncher>(FireworkLauncher)[0]
     )
 );
 game.searchComponents<FireworkSpawner>(FireworkSpawner)[0].input = 1;
@@ -201,14 +211,31 @@ function setup(ctx: CanvasRenderingContext2D) {
     ctx.strokeStyle = "white";
     ctx.fillStyle = "white";
     ctx.lineCap = "round";
-    background(ctx, "#1a1620");
+    background(ctx, "hsl(264, 30%, 5%)");
 }
 
 function background(ctx: CanvasRenderingContext2D, color: string) {
-    let fill = ctx.fillStyle;
     ctx.fillStyle = color;
+    ctx.beginPath();
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = fill;
+    ctx.closePath();
+    ctx.lineWidth = 1;
+    for (let x = 0; x < ctx.canvas.width; x += 10) {
+        ctx.strokeStyle = (x % 50 == 0) ? "#222" : "#111";
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, ctx.canvas.height);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    for (let y = 0; y < ctx.canvas.height; y += 10) {
+        ctx.strokeStyle = (y % 50 == 0) ? "#222" : "#111";
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(ctx.canvas.width, y);
+        ctx.closePath();
+        ctx.stroke();
+    }
 }
 
 function update(ctx: CanvasRenderingContext2D) {
@@ -232,6 +259,13 @@ document.onreadystatechange = function(event) {
             canvas.addEventListener("mousedown", event => {
                 isMousePressed = true;
                 mouseJustPressed = true;
+                // DEBUG
+                // game.spawnObject(new FireworkExplosion(
+                //     mousePosition, 280, [FireworkElement.GUNPOWDER, FireworkElement.GUNPOWDER]
+                // ));
+                // game.spawnObject(new FireworkTrail(
+                //     mousePosition, 280, [FireworkElement.COPPER, FireworkElement.CALCIUM]
+                // ));
             })
             canvas.addEventListener("mouseup", event => {
                 isMousePressed = false;
