@@ -4,10 +4,10 @@ const ARMATURE_PRESETS = new Map<string, BoneGraphics[]>();
 ARMATURE_PRESETS.set("example_level", buildArmGraphics({
     root: [ 280, 380 ],
     bones: [
-        { length: 110, speed: 1.5, width: 30 },
-        { length: 80, speed: 2.5, width: 20 },
-        { length: 60, speed: 3, width: 20 },
-        { length: 45, speed: 2.5, width: 18 }
+        { length: 110, speed: 3, width: 30 },
+        { length: 80, speed: 5, width: 20 },
+        { length: 60, speed: 6, width: 20 },
+        { length: 45, speed: 5, width: 18 }
     ]
 }));
 
@@ -59,7 +59,7 @@ game.components.push(
 
     new SimpleObstacle(new ConvexPolygonCollider([
         new Vector(0, 400), new Vector(100, 400),
-        new Vector(100, 425), new Vector(0, 425),
+        new Vector(100, 430), new Vector(0, 430),
     ])),
     new SimpleObstacle(new ConvexPolygonCollider([
         new Vector(80, 540), new Vector(110, 540),
@@ -124,12 +124,12 @@ game.components.push(
 
     // Attractors
     new FireworkFiller(
-        new Vector(115, 175), FireworkElement.COPPER, 3,
+        new Vector(115, 175), FireworkElement.COPPER, 1.5,
         new Vector(75, 100), new Vector(155, 230),
         { radius: 40 }
     ),
     new FireworkFiller(
-        new Vector(445, 175), FireworkElement.STRONTIUM, 3,
+        new Vector(445, 175), FireworkElement.STRONTIUM, 2.5,
         new Vector(405, 100), new Vector(485, 230),
         { radius: 40 }
     ),
@@ -137,7 +137,7 @@ game.components.push(
     new FireworkLauncher(new Vector(820, 540), { radius: 40 }),
     new AlwaysOn(),
 
-    new FireworkSpawner(new Vector(50, 490), 4, []),
+    new FireworkSpawner(new Vector(50, 490), 2, 4, []),
 
     new Carrier(game.armature[0].parent!, [
         new Vector(280, 380),
@@ -147,6 +147,7 @@ game.components.push(
     new Light(new Vector(115, 50)),
     new Light(new Vector(445, 50)),
     new Light(new Vector(50, 565), 5),
+    new CounterLight(new Vector(50, 415), 2),
 );
 
 // Manually link up for now
@@ -194,7 +195,11 @@ game.components.push(
     new SimpleCircuit(
         game.searchComponents<AlwaysOn>(AlwaysOn)[0],
         game.searchComponents<FireworkLauncher>(FireworkLauncher)[0]
-    )
+    ),
+    new SimpleCircuit(
+        game.searchComponents<FireworkSpawner>(FireworkSpawner)[0],
+        game.searchComponents<CounterLight>(CounterLight)[0]
+    ),
 );
 game.searchComponents<FireworkSpawner>(FireworkSpawner)[0].input = 1;
 

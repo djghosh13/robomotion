@@ -108,3 +108,27 @@ class WireLight {
         ctx.closePath();
     }
 }
+class CounterLight {
+    constructor(position, maxCount, hue = 134) {
+        this.position = position;
+        this.maxCount = maxCount;
+        this.hue = hue;
+        this.input = 0;
+    }
+    update(game) { }
+    render(ctx) {
+        const BOX_WIDTH = 15;
+        const BOX_SPACE = 5;
+        let totalWidth = (BOX_WIDTH + BOX_SPACE) * this.maxCount - BOX_SPACE;
+        ctx.fillStyle = `hsl(${this.hue}, 80%, 60%)`;
+        for (let i = 0; i < this.maxCount; i++) {
+            if (this.input * this.maxCount <= i) {
+                ctx.fillStyle = `hsl(${this.hue}, 70%, 20%)`;
+            }
+            ctx.beginPath();
+            ctx.rect(this.position.x - totalWidth / 2 + i * (BOX_WIDTH + BOX_SPACE), this.position.y - BOX_WIDTH / 2, BOX_WIDTH, BOX_WIDTH);
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+}

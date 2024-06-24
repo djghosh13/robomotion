@@ -135,26 +135,33 @@ class FireworkPreparer extends SimpleAttractor implements IInputter {
 }
 
 
-class FireworkSpawner implements IComponent, IInputter {
+class FireworkSpawner implements IComponent, IInputter, IOutputter {
     input: number;
-    firework: FireworkBox | null;
-    constructor(public position: Vector, public capacity: number, public elements: FireworkElement[]) {
+    fireworks: FireworkBox[];
+    constructor(public position: Vector, public maxFireworks: number, public capacity: number, public elements: FireworkElement[] = []) {
         this.input = 0;
-        this.firework = null;
+        this.fireworks = [];
     }
     update(game: Game) {
+        // Remove non-existing firework boxes
+        this.fireworks = this.fireworks.filter(firework => game.components.includes(firework));
         if (this.input == 1) {
-            if (this.firework != null) {
-                game.destroyObject(this.firework);
+            // Spawn new firework, delete oldest if needed
+            if (this.fireworks.length == this.maxFireworks) {
+                game.destroyObject(this.fireworks.shift()!);
             }
-            this.firework = new FireworkBox(this.position, this.capacity, { });
+            let newFirework = new FireworkBox(this.position, this.capacity, { });
             for (let element of this.elements) {
-                this.firework.addElement(element);
+                newFirework.addElement(element);
             }
-            game.spawnObject(this.firework);
+            game.spawnObject(newFirework);
+            this.fireworks.push(newFirework);
         }
     }
     render(ctx: CanvasRenderingContext2D) { }
+    get output() {
+        return 1 - this.fireworks.length / this.maxFireworks;
+    }
 }
 
 

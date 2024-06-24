@@ -103,7 +103,7 @@ class Game {
     render() {
         setup(this.ctx);
         // Draw regular components in order
-        for (let componentType of [WireLight, Carrier, Button, Lever, ChainPull, SimpleObstacle, Light]) {
+        for (let componentType of [WireLight, Carrier, Button, Lever, ChainPull, SimpleObstacle, Light, CounterLight]) {
             for (let comp of this.searchComponents<IComponent>(componentType)) {
                 comp.render(this.ctx);
             }

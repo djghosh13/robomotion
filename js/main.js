@@ -3,10 +3,10 @@ const ARMATURE_PRESETS = new Map();
 ARMATURE_PRESETS.set("example_level", buildArmGraphics({
     root: [280, 380],
     bones: [
-        { length: 110, speed: 1.5, width: 30 },
-        { length: 80, speed: 2.5, width: 20 },
-        { length: 60, speed: 3, width: 20 },
-        { length: 45, speed: 2.5, width: 18 }
+        { length: 110, speed: 3, width: 30 },
+        { length: 80, speed: 5, width: 20 },
+        { length: 60, speed: 6, width: 20 },
+        { length: 45, speed: 5, width: 18 }
     ]
 }));
 var game = new Game();
@@ -46,7 +46,7 @@ new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(680, 40), new Vector(680, 0),
 ])), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(0, 400), new Vector(100, 400),
-    new Vector(100, 425), new Vector(0, 425),
+    new Vector(100, 430), new Vector(0, 430),
 ])), new SimpleObstacle(new ConvexPolygonCollider([
     new Vector(80, 540), new Vector(110, 540),
     new Vector(110, 590), new Vector(80, 590),
@@ -90,17 +90,17 @@ new Button(new Vector(115, 280), new Vector(0, 1), {
     new Vector(510, 670), new Vector(520, 670),
 ])), 
 // Attractors
-new FireworkFiller(new Vector(115, 175), FireworkElement.COPPER, 3, new Vector(75, 100), new Vector(155, 230), { radius: 40 }), new FireworkFiller(new Vector(445, 175), FireworkElement.STRONTIUM, 3, new Vector(405, 100), new Vector(485, 230), { radius: 40 }), new FireworkPreparer(new Vector(590, 630), { radius: 40 }), new FireworkLauncher(new Vector(820, 540), { radius: 40 }), new AlwaysOn(), new FireworkSpawner(new Vector(50, 490), 4, []), new Carrier(game.armature[0].parent, [
+new FireworkFiller(new Vector(115, 175), FireworkElement.COPPER, 1.5, new Vector(75, 100), new Vector(155, 230), { radius: 40 }), new FireworkFiller(new Vector(445, 175), FireworkElement.STRONTIUM, 2.5, new Vector(405, 100), new Vector(485, 230), { radius: 40 }), new FireworkPreparer(new Vector(590, 630), { radius: 40 }), new FireworkLauncher(new Vector(820, 540), { radius: 40 }), new AlwaysOn(), new FireworkSpawner(new Vector(50, 490), 2, 4, []), new Carrier(game.armature[0].parent, [
     new Vector(280, 380),
     new Vector(580, 415)
 ], { speed: 200 }), 
 // Aesthetics
-new Light(new Vector(115, 50)), new Light(new Vector(445, 50)), new Light(new Vector(50, 565), 5));
+new Light(new Vector(115, 50)), new Light(new Vector(445, 50)), new Light(new Vector(50, 565), 5), new CounterLight(new Vector(50, 415), 2));
 // Manually link up for now
 for (let i = 0; i < 3; i++) {
     game.components.push(new SimpleCircuit(game.searchComponents(Button)[i], game.searchComponents(Light)[i]));
 }
-game.components.push(new SimpleCircuit(game.searchComponents(ChainPull)[0], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(ChainPull)[1], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(Lever)[0], game.searchComponents(WireLight)[0]), new ActivatorCircuit(game.searchComponents(Button)[2], game.searchComponents(FireworkSpawner)[0], 1), new ActivatorCircuit(game.searchComponents(Button)[0], game.searchComponents(FireworkFiller)[0], 1), new ActivatorCircuit(game.searchComponents(Button)[1], game.searchComponents(FireworkFiller)[1], 1), new ActivatorCircuit(game.searchComponents(Lever)[0], game.searchComponents(FireworkPreparer)[0], 1), new SimpleCircuit(game.searchComponents(AlwaysOn)[0], game.searchComponents(FireworkLauncher)[0]));
+game.components.push(new SimpleCircuit(game.searchComponents(ChainPull)[0], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(ChainPull)[1], game.searchComponents(Carrier)[0]), new SimpleCircuit(game.searchComponents(Lever)[0], game.searchComponents(WireLight)[0]), new ActivatorCircuit(game.searchComponents(Button)[2], game.searchComponents(FireworkSpawner)[0], 1), new ActivatorCircuit(game.searchComponents(Button)[0], game.searchComponents(FireworkFiller)[0], 1), new ActivatorCircuit(game.searchComponents(Button)[1], game.searchComponents(FireworkFiller)[1], 1), new ActivatorCircuit(game.searchComponents(Lever)[0], game.searchComponents(FireworkPreparer)[0], 1), new SimpleCircuit(game.searchComponents(AlwaysOn)[0], game.searchComponents(FireworkLauncher)[0]), new SimpleCircuit(game.searchComponents(FireworkSpawner)[0], game.searchComponents(CounterLight)[0]));
 game.searchComponents(FireworkSpawner)[0].input = 1;
 var run = true;
 var mousePosition = new Vector(100, 100);

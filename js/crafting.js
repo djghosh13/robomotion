@@ -107,26 +107,34 @@ class FireworkPreparer extends SimpleAttractor {
     render(ctx) { }
 }
 class FireworkSpawner {
-    constructor(position, capacity, elements) {
+    constructor(position, maxFireworks, capacity, elements = []) {
         this.position = position;
+        this.maxFireworks = maxFireworks;
         this.capacity = capacity;
         this.elements = elements;
         this.input = 0;
-        this.firework = null;
+        this.fireworks = [];
     }
     update(game) {
+        // Remove non-existing firework boxes
+        this.fireworks = this.fireworks.filter(firework => game.components.includes(firework));
         if (this.input == 1) {
-            if (this.firework != null) {
-                game.destroyObject(this.firework);
+            // Spawn new firework, delete oldest if needed
+            if (this.fireworks.length == this.maxFireworks) {
+                game.destroyObject(this.fireworks.shift());
             }
-            this.firework = new FireworkBox(this.position, this.capacity, {});
+            let newFirework = new FireworkBox(this.position, this.capacity, {});
             for (let element of this.elements) {
-                this.firework.addElement(element);
+                newFirework.addElement(element);
             }
-            game.spawnObject(this.firework);
+            game.spawnObject(newFirework);
+            this.fireworks.push(newFirework);
         }
     }
     render(ctx) { }
+    get output() {
+        return 1 - this.fireworks.length / this.maxFireworks;
+    }
 }
 class FireworkLauncher extends SimpleAttractor {
     constructor(position, { radius = 40, speed = 1 }) {

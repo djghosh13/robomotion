@@ -34,6 +34,7 @@ class AlwaysOn implements IComponent, IOutputter {
     render(ctx: CanvasRenderingContext2D) { }
 }
 
+
 class Light implements IComponent, IInputter {
     constructor(public position: Vector, public hue: number = 134, public on: boolean = false) { }
     update(game: Game) { }
@@ -98,5 +99,32 @@ class WireLight implements IComponent, IInputter {
         }
         ctx.stroke();
         ctx.closePath();
+    }
+}
+
+class CounterLight implements IComponent, IInputter {
+    input: number;
+    constructor(public position: Vector, public maxCount: number, public hue: number = 134) {
+        this.input = 0;
+    }
+    update(game: Game) { }
+    render(ctx: CanvasRenderingContext2D) {
+        const BOX_WIDTH = 15;
+        const BOX_SPACE = 5;
+        let totalWidth = (BOX_WIDTH + BOX_SPACE) * this.maxCount - BOX_SPACE;
+        ctx.fillStyle = `hsl(${this.hue}, 80%, 60%)`;
+        for (let i = 0; i < this.maxCount; i++) {
+            if (this.input * this.maxCount <= i) {
+                ctx.fillStyle = `hsl(${this.hue}, 70%, 20%)`;
+            }
+            ctx.beginPath();
+            ctx.rect(
+                this.position.x - totalWidth/2 + i * (BOX_WIDTH + BOX_SPACE),
+                this.position.y - BOX_WIDTH/2,
+                BOX_WIDTH, BOX_WIDTH
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
     }
 }
