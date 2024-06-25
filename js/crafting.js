@@ -112,6 +112,7 @@ class FireworkSpawner {
         this.maxFireworks = maxFireworks;
         this.capacity = capacity;
         this.elements = elements;
+        this.renderOrder = 100;
         this.input = 0;
         this.fireworks = [];
     }

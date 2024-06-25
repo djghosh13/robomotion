@@ -1,6 +1,7 @@
 interface IComponent {
     update(game: Game): void;
     render(ctx: CanvasRenderingContext2D): void;
+    renderOrder: number;
 }
 
 
@@ -21,6 +22,7 @@ function iofIGrabbable(object: any): object is IGrabbable {
 
 
 class SimpleObstacle implements IComponent, ICollidable {
+    renderOrder: number = -100;
     constructor(public collider: Collider) { }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
@@ -47,6 +49,7 @@ function iofIInputter(object: any): object is IInputter {
 
 
 class Button implements IComponent, ICollidable, IOutputter {
+    renderOrder: number = -300;
     facing: Vector;
     pressed: number;
     speed: number;
@@ -107,6 +110,7 @@ class Button implements IComponent, ICollidable, IOutputter {
 
 
 class ChainPull implements IComponent, IGrabbable, IOutputter {
+    renderOrder: number = -150;
     held: boolean;
     endPosition: Vector;
     speed: number;
@@ -201,6 +205,7 @@ class ChainPull implements IComponent, IGrabbable, IOutputter {
 }
 
 class Lever implements IComponent, IGrabbable, IOutputter {
+    renderOrder: number = -200;
     facing: Vector;
     held: boolean;
     rotation: number;
@@ -265,6 +270,7 @@ class Lever implements IComponent, IGrabbable, IOutputter {
 
 
 class Carrier implements IComponent, IInputter {
+    renderOrder: number = -400;
     state: number;
     cooldown: number;
     speed: number;

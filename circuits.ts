@@ -1,4 +1,5 @@
 class SimpleCircuit implements IComponent {
+    renderOrder: number = -1000;
     constructor(public activator: IOutputter, public responder: IInputter) { }
     update(game: Game): void {
         this.responder.input = this.activator.output;
@@ -7,6 +8,7 @@ class SimpleCircuit implements IComponent {
 }
 
 class ActivatorCircuit implements IComponent {
+    renderOrder: number = -1000;
     lastInput: number;
     onCooldown: number;
     constructor(public activator: IOutputter, public responder: IInputter, public cooldown: number) {
@@ -27,6 +29,7 @@ class ActivatorCircuit implements IComponent {
 }
 
 class AlwaysOn implements IComponent, IOutputter {
+    renderOrder: number = -1000;
     output: number;
     update(game: Game) {
         this.output = 1;
@@ -36,6 +39,7 @@ class AlwaysOn implements IComponent, IOutputter {
 
 
 class Light implements IComponent, IInputter {
+    renderOrder: number = -50;
     constructor(public position: Vector, public hue: number = 134, public on: boolean = false) { }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
@@ -63,6 +67,7 @@ class Light implements IComponent, IInputter {
 }
 
 class WireLight implements IComponent, IInputter {
+    renderOrder: number = -500;
     constructor(public points: Vector[], public hue: number = 134, public input: number = 0) { }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
@@ -103,6 +108,7 @@ class WireLight implements IComponent, IInputter {
 }
 
 class CounterLight implements IComponent, IInputter {
+    renderOrder: number = -50;
     input: number;
     constructor(public position: Vector, public maxCount: number, public hue: number = 134) {
         this.input = 0;

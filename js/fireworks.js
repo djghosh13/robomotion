@@ -10,6 +10,7 @@ var FireworkElement;
 class FireworkExplosion {
     constructor(position, power, elements) {
         this.position = position;
+        this.renderOrder = 500;
         this.lifetime = this.maxLifetime = 5;
         this.particles = [];
         for (let element of elements) {

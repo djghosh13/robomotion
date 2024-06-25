@@ -136,6 +136,7 @@ class FireworkPreparer extends SimpleAttractor implements IInputter {
 
 
 class FireworkSpawner implements IComponent, IInputter, IOutputter {
+    renderOrder: number = 100;
     input: number;
     fireworks: FireworkBox[];
     constructor(public position: Vector, public maxFireworks: number, public capacity: number, public elements: FireworkElement[] = []) {

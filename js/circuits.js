@@ -2,6 +2,7 @@ class SimpleCircuit {
     constructor(activator, responder) {
         this.activator = activator;
         this.responder = responder;
+        this.renderOrder = -1000;
     }
     update(game) {
         this.responder.input = this.activator.output;
@@ -13,6 +14,7 @@ class ActivatorCircuit {
         this.activator = activator;
         this.responder = responder;
         this.cooldown = cooldown;
+        this.renderOrder = -1000;
         this.lastInput = 0;
         this.onCooldown = 0;
     }
@@ -30,6 +32,9 @@ class ActivatorCircuit {
     render(ctx) { }
 }
 class AlwaysOn {
+    constructor() {
+        this.renderOrder = -1000;
+    }
     update(game) {
         this.output = 1;
     }
@@ -40,6 +45,7 @@ class Light {
         this.position = position;
         this.hue = hue;
         this.on = on;
+        this.renderOrder = -50;
     }
     update(game) { }
     render(ctx) {
@@ -70,6 +76,7 @@ class WireLight {
         this.points = points;
         this.hue = hue;
         this.input = input;
+        this.renderOrder = -500;
     }
     update(game) { }
     render(ctx) {
@@ -113,6 +120,7 @@ class CounterLight {
         this.position = position;
         this.maxCount = maxCount;
         this.hue = hue;
+        this.renderOrder = -50;
         this.input = 0;
     }
     update(game) { }

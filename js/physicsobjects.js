@@ -2,6 +2,7 @@ class PhysicsObject {
     constructor(position, radius) {
         this.position = position;
         this.radius = radius;
+        this.renderOrder = -20;
         this.lastPosition = this.position;
         this.velocity = Vector.ZERO;
     }
@@ -75,6 +76,7 @@ class SimpleObject extends PhysicsObject {
 class SimpleAttractor {
     constructor(position, { radius = 20, speed = 1 }) {
         this.position = position;
+        this.renderOrder = 100;
         this.radius = radius, this.speed = speed;
         this.heldObject = null;
     }

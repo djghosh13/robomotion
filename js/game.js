@@ -97,6 +97,33 @@ class Game {
     }
     render() {
         setup(this.ctx);
+        let renderOrdering = [...this.components].sort((a, b) => a.renderOrder - b.renderOrder);
+        let splitIndex = renderOrdering.reduce((splitIndex, comp, curIndex) => (comp.renderOrder < 0) ? curIndex + 1 : splitIndex, 0);
+        // Draw background (negative renderOrder)
+        for (let i = 0; i < splitIndex; i++) {
+            if (renderOrdering[i] != this.heldObject) {
+                renderOrdering[i].render(this.ctx);
+            }
+        }
+        // Draw armature
+        for (let i = 0; i < this.armature.length - 1; i++) {
+            this.armature[i].render(this.ctx);
+        }
+        // Draw held object
+        if (this.heldObject != null) {
+            this.heldObject.render(this.ctx);
+        }
+        // Draw grabber arm
+        this.armature[this.armature.length - 1].renderGrabber(this.ctx);
+        // Draw foreground (positive renderOrder)
+        for (let i = splitIndex; i < renderOrdering.length; i++) {
+            if (renderOrdering[i] != this.heldObject) {
+                renderOrdering[i].render(this.ctx);
+            }
+        }
+    }
+    oldRender() {
+        setup(this.ctx);
         // Draw regular components in order
         for (let componentType of [WireLight, Carrier, Button, Lever, ChainPull, SimpleObstacle, Light, CounterLight]) {
             for (let comp of this.searchComponents(componentType)) {
@@ -138,6 +165,9 @@ class Game {
         let index = this.components.indexOf(object);
         if (index != -1) {
             this.components.splice(index, 1);
+            if (object == this.heldObject) {
+                this.heldObject = null;
+            }
         }
     }
 }

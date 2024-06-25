@@ -17,6 +17,7 @@ type HSLColor = {
 
 
 class FireworkExplosion implements IComponent {
+    renderOrder: number = 500;
     static ELEMENT_COLOR = new Map<FireworkElement, HSLColor>([
         [FireworkElement.GUNPOWDER, {h: 0, s: 0, l: 70}],
         [FireworkElement.COPPER, {h: 210, s: 100, l: 50}],

@@ -7,6 +7,7 @@ function iofIGrabbable(object) {
 class SimpleObstacle {
     constructor(collider) {
         this.collider = collider;
+        this.renderOrder = -100;
     }
     update(game) { }
     render(ctx) {
@@ -25,6 +26,7 @@ function iofIInputter(object) {
 class Button {
     constructor(position, facing, { speed = 1, width = 40, depth = 20 }) {
         this.position = position;
+        this.renderOrder = -300;
         this.facing = facing.normalized();
         this.pressed = 0;
         this.speed = speed, this.width = width, this.depth = depth;
@@ -75,6 +77,7 @@ class Button {
 class ChainPull {
     constructor(position, { speed = 1, length = 80, maxLength = 160 }) {
         this.position = position;
+        this.renderOrder = -150;
         this.held = false;
         this.endPosition = this.position.add(new Vector(0, this.length));
         this.speed = speed, this.length = length, this.maxLength = maxLength;
@@ -165,6 +168,7 @@ class ChainPull {
 class Lever {
     constructor(position, facing, { speed = 1, length = 80, maxRotation = Math.PI / 3 }) {
         this.position = position;
+        this.renderOrder = -200;
         this.facing = facing.normalized();
         this.held = false;
         this.rotation = -Math.PI / 3;
@@ -222,6 +226,7 @@ class Carrier {
     constructor(root, positions, { speed = 100 }) {
         this.root = root;
         this.positions = positions;
+        this.renderOrder = -400;
         if (!(root instanceof Root)) {
             throw new Error("Bone is not root!");
         }

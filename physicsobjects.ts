@@ -1,4 +1,5 @@
 class PhysicsObject implements IComponent {
+    renderOrder: number = -20;
     lastPosition: Vector;
     velocity: Vector;
     constructor(public position: Vector, public radius: number) {
@@ -76,6 +77,7 @@ class SimpleObject extends PhysicsObject implements IGrabbable {
 
 
 class SimpleAttractor implements IComponent {
+    renderOrder: number = 100;
     radius: number;
     speed: number;
     heldObject: SimpleObject | null;
