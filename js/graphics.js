@@ -14,8 +14,8 @@ class BoneGraphics extends BonePhysics {
             points.push(this.end.add(ortho.rotate(Math.PI * i / N_POINTS).mul(-0.8)));
         }
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#fff";
-        ctx.fillStyle = "#000";
+        ctx.strokeStyle = "#ccc";
+        ctx.fillStyle = "#111";
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i < points.length; i++) {
@@ -36,8 +36,8 @@ class BoneGraphics extends BonePhysics {
         let along = this.end.sub(this.start);
         let ortho = along.rotate90().normalized().mul(this.width / 2);
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#fff";
-        ctx.fillStyle = "#000";
+        ctx.strokeStyle = "#ccc";
+        ctx.fillStyle = "#111";
         let angle = isMousePressed ? 0.2 : 0.35;
         for (let dir of [-1, 1]) {
             let points = [];

@@ -55,11 +55,13 @@ class Button implements IComponent, ICollidable, IOutputter {
     speed: number;
     width: number;
     depth: number;
+    minDepth: number;
     constructor(public position: Vector, facing: Vector,
-            { speed = 1, width = 40, depth = 20 }) {
+            { speed = 1, width = 40, depth = 20, minDepth = 5 }) {
         this.facing = facing.normalized();
         this.pressed = 0;
-        this.speed = speed, this.width = width, this.depth = depth;
+        this.speed = speed, this.width = width,
+        this.depth = depth, this.minDepth = minDepth;
     }
     update(game: Game) {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
@@ -71,7 +73,7 @@ class Button implements IComponent, ICollidable, IOutputter {
             let relativeMainAxis = relativePosition.x / this.depth;
             if (-0.49 < relativeCrossAxis && relativeCrossAxis < 0.49 &&
                     0 <= relativeMainAxis && relativeMainAxis < 1) {
-                this.pressed = Math.max(this.pressed, 1 - relativeMainAxis);
+                this.pressed = Math.max(this.pressed, 1 - Math.max(relativeMainAxis, this.minDepth / this.depth));
             }
         }
     }
@@ -95,7 +97,7 @@ class Button implements IComponent, ICollidable, IOutputter {
         ));
     }
     get output() {
-        return Math.min(this.pressed / 0.75, 1);
+        return Math.min(this.pressed / (1 - this.minDepth / this.depth) / 0.75, 1);
     }
 
     private cornerPositions(depressedBy: number) {

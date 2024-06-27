@@ -104,7 +104,7 @@ game.components.push(
     }),
 
     new Button(new Vector(110, 565), new Vector(1, 0), {
-        speed: 2, width: 40, depth: 15
+        speed: 1.5, width: 40, depth: 15
     }),
 
     new ChainPull(new Vector(280, 40), {
@@ -225,22 +225,22 @@ function background(ctx: CanvasRenderingContext2D, color: string) {
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.closePath();
     ctx.lineWidth = 1;
-    for (let x = 0; x < ctx.canvas.width; x += 10) {
-        ctx.strokeStyle = (x % 50 == 0) ? "#222" : "#111";
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, ctx.canvas.height);
-        ctx.closePath();
-        ctx.stroke();
-    }
-    for (let y = 0; y < ctx.canvas.height; y += 10) {
-        ctx.strokeStyle = (y % 50 == 0) ? "#222" : "#111";
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(ctx.canvas.width, y);
-        ctx.closePath();
-        ctx.stroke();
-    }
+    // for (let x = 0; x < ctx.canvas.width; x += 10) {
+    //     ctx.strokeStyle = (x % 50 == 0) ? "#222" : "#111";
+    //     ctx.beginPath();
+    //     ctx.moveTo(x, 0);
+    //     ctx.lineTo(x, ctx.canvas.height);
+    //     ctx.closePath();
+    //     ctx.stroke();
+    // }
+    // for (let y = 0; y < ctx.canvas.height; y += 10) {
+    //     ctx.strokeStyle = (y % 50 == 0) ? "#222" : "#111";
+    //     ctx.beginPath();
+    //     ctx.moveTo(0, y);
+    //     ctx.lineTo(ctx.canvas.width, y);
+    //     ctx.closePath();
+    //     ctx.stroke();
+    // }
 }
 
 function update(ctx: CanvasRenderingContext2D) {

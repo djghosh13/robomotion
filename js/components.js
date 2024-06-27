@@ -24,12 +24,13 @@ function iofIInputter(object) {
     return "input" in object;
 }
 class Button {
-    constructor(position, facing, { speed = 1, width = 40, depth = 20 }) {
+    constructor(position, facing, { speed = 1, width = 40, depth = 20, minDepth = 5 }) {
         this.position = position;
         this.renderOrder = -300;
         this.facing = facing.normalized();
         this.pressed = 0;
-        this.speed = speed, this.width = width, this.depth = depth;
+        this.speed = speed, this.width = width,
+            this.depth = depth, this.minDepth = minDepth;
     }
     update(game) {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
@@ -41,7 +42,7 @@ class Button {
             let relativeMainAxis = relativePosition.x / this.depth;
             if (-0.49 < relativeCrossAxis && relativeCrossAxis < 0.49 &&
                 0 <= relativeMainAxis && relativeMainAxis < 1) {
-                this.pressed = Math.max(this.pressed, 1 - relativeMainAxis);
+                this.pressed = Math.max(this.pressed, 1 - Math.max(relativeMainAxis, this.minDepth / this.depth));
             }
         }
     }
@@ -63,7 +64,7 @@ class Button {
         return new ConvexPolygonCollider(this.cornerPositions(Math.min(this.pressed + this.speed * FRAME_INTERVAL / 1000, 0.80)));
     }
     get output() {
-        return Math.min(this.pressed / 0.75, 1);
+        return Math.min(this.pressed / (1 - this.minDepth / this.depth) / 0.75, 1);
     }
     cornerPositions(depressedBy) {
         let rightwards = this.facing.rotate90();
