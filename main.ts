@@ -268,9 +268,9 @@ document.onreadystatechange = function(event) {
                 // game.spawnObject(new FireworkExplosion(
                 //     mousePosition, 280, [FireworkElement.GUNPOWDER, FireworkElement.GUNPOWDER]
                 // ));
-                // game.spawnObject(new FireworkTrail(
-                //     mousePosition, 280, [FireworkElement.COPPER, FireworkElement.CALCIUM]
-                // ));
+                game.spawnObject(new FireworkTrail(
+                    mousePosition, 280, new Array(3).fill(1 + Math.floor(mousePosition.x / 240))
+                ));
             })
             canvas.addEventListener("mouseup", event => {
                 isMousePressed = false;

@@ -81,12 +81,13 @@ class FireworkExplosion implements IComponent {
         this.drawbuffer.closePath();
         // Draw new particle positions
         this.drawbuffer.globalCompositeOperation = "source-over";
+        this.drawbuffer.globalCompositeOperation = "screen";
         for (let particle of this.particles) {
             let color = FireworkExplosion.ELEMENT_COLOR.get(particle['element'])!;
             let hue = color['h'];
-            let sat = color['s'] * t;
-            let light = Math.min(Math.max(color['l'] + 20 * Math.tanh(particle['z']), 0), 100);
-            let alpha = 100 * Math.min(1.5 * t * t, 1);
+            let sat = color['s'] * Math.min(1.5 * t * t, 1);
+            let light = Math.min(Math.max(color['l'] + 20 * Math.tanh(particle['z']), 0), 100) * t;
+            let alpha = 80 * Math.min(1.5 * t * t, 1);
             let psize = 2 + Math.tanh(particle['z']);
             this.drawbuffer.strokeStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha}%)`;
             this.drawbuffer.beginPath();
