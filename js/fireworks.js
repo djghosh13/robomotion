@@ -5,6 +5,9 @@ var FireworkElement;
     FireworkElement[FireworkElement["STRONTIUM"] = 2] = "STRONTIUM";
     FireworkElement[FireworkElement["CALCIUM"] = 3] = "CALCIUM";
     FireworkElement[FireworkElement["SODIUM"] = 4] = "SODIUM";
+    FireworkElement[FireworkElement["BARIUM"] = 5] = "BARIUM";
+    FireworkElement[FireworkElement["TITANIUM"] = 6] = "TITANIUM";
+    FireworkElement[FireworkElement["ALUMINUM"] = 7] = "ALUMINUM";
 })(FireworkElement || (FireworkElement = {}));
 ;
 class FireworkExplosion {
@@ -56,7 +59,7 @@ class FireworkExplosion {
         let t = this.lifetime / this.maxLifetime;
         // Fade out firework trail
         this.drawbuffer.globalCompositeOperation = "destination-in";
-        this.drawbuffer.fillStyle = "hsla(0, 0%, 0%, 90%)";
+        this.drawbuffer.fillStyle = "hsla(0, 0%, 0%, 95%)";
         this.drawbuffer.beginPath();
         this.drawbuffer.fillRect(0, 0, 800, 800);
         this.drawbuffer.closePath();
@@ -68,7 +71,7 @@ class FireworkExplosion {
             let hue = color['h'];
             let sat = color['s'] * Math.min(1.5 * t * t, 1);
             let light = Math.min(Math.max(color['l'] + 20 * Math.tanh(particle['z']), 0), 100) * t;
-            let alpha = 80 * Math.min(1.5 * t * t, 1);
+            let alpha = 100 * Math.min(1.5 * t * t, 1);
             let psize = 2 + Math.tanh(particle['z']);
             this.drawbuffer.strokeStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha}%)`;
             this.drawbuffer.beginPath();
@@ -84,10 +87,13 @@ class FireworkExplosion {
 }
 FireworkExplosion.ELEMENT_COLOR = new Map([
     [FireworkElement.GUNPOWDER, { h: 0, s: 0, l: 70 }],
-    [FireworkElement.COPPER, { h: 210, s: 100, l: 50 }],
-    [FireworkElement.STRONTIUM, { h: 345, s: 100, l: 50 }],
-    [FireworkElement.CALCIUM, { h: 40, s: 100, l: 50 }],
-    [FireworkElement.SODIUM, { h: 65, s: 100, l: 50 }]
+    [FireworkElement.COPPER, { h: 220, s: 100, l: 40 }],
+    [FireworkElement.STRONTIUM, { h: 355, s: 100, l: 50 }],
+    [FireworkElement.CALCIUM, { h: 15, s: 100, l: 50 }],
+    [FireworkElement.SODIUM, { h: 40, s: 90, l: 55 }],
+    [FireworkElement.BARIUM, { h: 125, s: 100, l: 45 }],
+    [FireworkElement.TITANIUM, { h: 240, s: 10, l: 55 }],
+    [FireworkElement.ALUMINUM, { h: 240, s: 0, l: 80 }]
 ]);
 class FireworkTrail extends FireworkExplosion {
     constructor(position, power, elements) {
