@@ -137,11 +137,25 @@ function background(ctx, color) {
     //     ctx.stroke();
     // }
 }
+var msptHistory = Array(60).fill(0);
+var averageMspt = 0;
 function update(ctx) {
     if (!run)
         return;
+    let startTime = Date.now();
     game.update();
     game.render();
+    // Update ms/tick
+    let mspt = Date.now() - startTime;
+    msptHistory.push(mspt);
+    averageMspt += (mspt - msptHistory.shift()) / msptHistory.length;
+    let fpsCounter = document.getElementById("fps");
+    if (fpsCounter != null) {
+        fpsCounter.innerText = averageMspt.toFixed(1);
+        fpsCounter.style.color = (averageMspt < FRAME_INTERVAL / 2) ? "#6c6"
+            : (averageMspt < FRAME_INTERVAL) ? "#cc6"
+                : "#c33";
+    }
 }
 document.onreadystatechange = function (event) {
     if (document.readyState == "complete") {
