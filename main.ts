@@ -148,6 +148,9 @@ game.components.push(
     new Light(new Vector(445, 50)),
     new Light(new Vector(50, 565), 5),
     new CounterLight(new Vector(50, 415), 2),
+
+    // Firework manager
+    new FireworkParticleManager(960, 720),
 );
 
 // Manually link up for now

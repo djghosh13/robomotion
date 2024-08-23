@@ -16,6 +16,178 @@ type HSLColor = {
 };
 
 
+const vsSource: string = `
+attribute vec4 aVertexPosition;
+attribute vec4 aVertexColor;
+uniform lowp float uTime;
+uniform lowp vec2 uScreenSize;
+varying lowp vec4 vColor;
+
+void main() {
+    gl_Position.x = 2.0 * aVertexPosition.x / uScreenSize.x - 1.0;
+    gl_Position.y = 1.0 - 2.0 * aVertexPosition.y / uScreenSize.y;
+    gl_Position.z = 0.0;
+    gl_Position.w = 1.0;
+    vColor = vec4(
+        aVertexColor.x,
+        aVertexColor.y * min(1.5 * uTime * uTime, 1.0),
+        aVertexColor.z * uTime,
+        min(1.5 * uTime * uTime, 1.0) * min(uTime / 0.2, 1.0)
+    );
+}
+`;
+const fsSource: string = `
+uniform lowp float uTime;
+varying lowp vec4 vColor;
+
+lowp vec3 hsl2rgb(lowp vec3 hsl) {
+    lowp float C = (1.0 - abs(0.02 * hsl.z - 1.0)) * (0.01 * hsl.y);
+    lowp float X = C * (1.0 - abs(mod(hsl.x / 60.0, 2.0) - 1.0));
+    lowp float m = 0.01 * hsl.z - C / 2.0;
+    if (hsl.x <  60.0) return vec3(C + m, X + m,     m);
+    if (hsl.x < 120.0) return vec3(X + m, C + m,     m);
+    if (hsl.x < 180.0) return vec3(    m, C + m, X + m);
+    if (hsl.x < 240.0) return vec3(    m, X + m, C + m);
+    if (hsl.x < 300.0) return vec3(X + m,     m, C + m);
+                       return vec3(C + m,     m, X + m);
+}
+
+void main() {
+    gl_FragColor = vec4(hsl2rgb(vColor.xyz), vColor.a);
+}
+`;
+
+class FireworkParticleManager implements IComponent {
+    renderOrder: number = 1000;
+    // Particle management
+    explosions: FireworkExplosion[];
+    // Rendering
+    gl: WebGLRenderingContext;
+    shaderProgram: WebGLProgram;
+    vertexBuffer: WebGLBuffer;
+    colorBuffer: WebGLBuffer;
+    constructor(public width: number = 640, public height: number = 480) {
+        this.explosions = [];
+        let canvas = new OffscreenCanvas(this.width, this.height);
+        // Init WebGL
+        this.gl = canvas.getContext("webgl", {"premultipliedAlpha": false})!;
+        let vShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+        let fShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        if (vShader != null && fShader != null) {
+            this.gl.shaderSource(vShader, vsSource);
+            this.gl.shaderSource(fShader, fsSource);
+            // Compile and log errors
+            for (let shader of [vShader, fShader]) {
+                this.gl.compileShader(shader);
+                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                    console.error(this.gl.getShaderInfoLog(shader));
+                    this.gl.deleteShader(shader);
+                }
+            }
+            // Shader program
+            let shaderProgram = this.gl.createProgram();
+            if (shaderProgram != null) {
+                this.gl.attachShader(shaderProgram, vShader);
+                this.gl.attachShader(shaderProgram, fShader);
+                // Link and log errors
+                this.gl.linkProgram(shaderProgram);
+                if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
+                    console.error(this.gl.getProgramInfoLog(shaderProgram));
+                }
+                this.shaderProgram = shaderProgram;
+            }
+        }
+        this.vertexBuffer = this.gl.createBuffer()!;
+        this.colorBuffer = this.gl.createBuffer()!;
+        this.gl.enable(this.gl.BLEND);
+    }
+    update(game: Game) {
+        // Remove dead fireworks
+        while (this.explosions.length && this.explosions[0].lifetime <= 0) {
+            this.explosions.shift();
+        }
+        // Add detected fireworks
+        for (let firework of game.searchComponents<FireworkExplosion>(FireworkExplosion)) {
+            if (!firework.registered) {
+                firework.registered = true;
+                let insertAt = 0;
+                for (; insertAt < this.explosions.length; insertAt++) {
+                    if (this.explosions[insertAt].lifetime > firework.lifetime) {
+                        break;
+                    }
+                }
+                this.explosions.splice(insertAt, 0, firework);
+            }
+        }
+    }
+    render(ctx: CanvasRenderingContext2D) {
+        this.gl
+        this.gl.clearColor(0, 0, 0, 1.0);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.gl.blendFuncSeparate(
+            this.gl.ONE, this.gl.ONE_MINUS_SRC_COLOR,
+            this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA
+        );
+        for (let explosion of this.explosions) {
+            let positionData = new Float32Array(2 * 3 * explosion.particles.length);
+            let colorData = new Float32Array(3 * 3 * explosion.particles.length);
+            for (let i = 0; i < explosion.particles.length; i++) {
+                // Set vertex position
+                let pos = explosion.particles[i]['position'].add(explosion.position);
+                let diff = 1;
+                const SQRT_3 = Math.sqrt(3);
+                positionData.set([
+                    pos.x - diff * SQRT_3, pos.y + diff,
+                    pos.x, pos.y - diff * 2,
+                    pos.x + diff * SQRT_3, pos.y + diff,
+                ], 2 * 3 * i);
+                // Set vertex color
+                let color = FireworkExplosion.ELEMENT_COLOR.get(explosion.particles[i]['element'])!;
+                colorData.set([
+                    color['h'], color['s'], color['l'],
+                    color['h'], color['s'], color['l'],
+                    color['h'], color['s'], color['l'],
+                ], 3 * 3 * i);
+            }
+            // Vertex buffer
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
+            this.gl.bufferData(
+                this.gl.ARRAY_BUFFER,
+                positionData,
+                this.gl.DYNAMIC_DRAW
+            );
+            let vertexPositionPointer = this.gl.getAttribLocation(this.shaderProgram, "aVertexPosition");
+            this.gl.vertexAttribPointer(vertexPositionPointer, 2, this.gl.FLOAT, false, 0, 0);
+            this.gl.enableVertexAttribArray(vertexPositionPointer);
+            // Color buffer
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorBuffer);
+            this.gl.bufferData(
+                this.gl.ARRAY_BUFFER,
+                colorData,
+                this.gl.DYNAMIC_DRAW
+            );
+            let vertexColorPointer = this.gl.getAttribLocation(this.shaderProgram, "aVertexColor");
+            this.gl.vertexAttribPointer(vertexColorPointer, 3, this.gl.FLOAT, false, 0, 0);
+            this.gl.enableVertexAttribArray(vertexColorPointer);
+            // Draw
+            this.gl.useProgram(this.shaderProgram);
+            this.gl.uniform1f(
+                this.gl.getUniformLocation(this.shaderProgram, "uTime"),
+                explosion.lifetime / explosion.maxLifetime
+            );
+            this.gl.uniform2f(
+                this.gl.getUniformLocation(this.shaderProgram, "uScreenSize"),
+                this.width, this.height
+            );
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, 3 * explosion.particles.length);
+        }
+        // let savedAlpha = ctx.globalAlpha;
+        // ctx.globalAlpha = Math.min(t / 0.2, 1);
+        ctx.drawImage(this.gl.canvas, 0, 0);
+        // ctx.globalAlpha = savedAlpha;
+    }
+}
+
 class FireworkExplosion implements IComponent {
     renderOrder: number = 500;
     static ELEMENT_COLOR = new Map<FireworkElement, HSLColor>([
@@ -31,8 +203,10 @@ class FireworkExplosion implements IComponent {
     maxLifetime: number;
     lifetime: number;
     particles: FireworkParticle[];
-    drawbuffer: OffscreenCanvasRenderingContext2D;
+    registered: boolean;
+
     constructor(public position: Vector, power: number, elements: FireworkElement[]) {
+        this.registered = false;
         this.lifetime = this.maxLifetime = 5;
         this.particles = [];
         for (let element of elements) {
@@ -55,8 +229,6 @@ class FireworkExplosion implements IComponent {
             }
         }
         this.particles.sort((a, b) => a['zvelocity'] - b['zvelocity']);
-        let canvas = new OffscreenCanvas(800, 800);
-        this.drawbuffer = canvas.getContext("2d")!;
     }
     update(game: Game) {
         const DRAG = 0.1;
@@ -74,35 +246,7 @@ class FireworkExplosion implements IComponent {
             game.destroyObject(this);
         }
     }
-    render(ctx: CanvasRenderingContext2D) {
-        let t = this.lifetime / this.maxLifetime;
-        // Fade out firework trail
-        this.drawbuffer.globalCompositeOperation = "destination-in";
-        this.drawbuffer.fillStyle = "hsla(0, 0%, 0%, 95%)";
-        this.drawbuffer.beginPath();
-        this.drawbuffer.fillRect(0, 0, 800, 800);
-        this.drawbuffer.closePath();
-        // Draw new particle positions
-        this.drawbuffer.globalCompositeOperation = "source-over";
-        this.drawbuffer.globalCompositeOperation = "screen";
-        for (let particle of this.particles) {
-            let color = FireworkExplosion.ELEMENT_COLOR.get(particle['element'])!;
-            let hue = color['h'];
-            let sat = color['s'] * Math.min(1.5 * t * t, 1);
-            let light = Math.min(Math.max(color['l'] + 20 * Math.tanh(particle['z']), 0), 100) * t;
-            let alpha = 100 * Math.min(1.5 * t * t, 1);
-            let psize = 2 + Math.tanh(particle['z']);
-            this.drawbuffer.strokeStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha}%)`;
-            this.drawbuffer.beginPath();
-            this.drawbuffer.rect(400 + particle['position'].x, 400 + particle['position'].y, psize, psize);
-            this.drawbuffer.closePath();
-            this.drawbuffer.stroke();
-        }
-        let savedAlpha = ctx.globalAlpha;
-        ctx.globalAlpha = Math.min(t / 0.2, 1);
-        ctx.drawImage(this.drawbuffer.canvas, this.position.x - 400, this.position.y - 400);
-        ctx.globalAlpha = savedAlpha;
-    }
+    render(ctx: CanvasRenderingContext2D) { }
 }
 
 

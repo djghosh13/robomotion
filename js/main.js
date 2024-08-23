@@ -95,7 +95,9 @@ new FireworkFiller(new Vector(115, 175), FireworkElement.COPPER, 1.5, new Vector
     new Vector(580, 415)
 ], { speed: 200 }), 
 // Aesthetics
-new Light(new Vector(115, 50)), new Light(new Vector(445, 50)), new Light(new Vector(50, 565), 5), new CounterLight(new Vector(50, 415), 2));
+new Light(new Vector(115, 50)), new Light(new Vector(445, 50)), new Light(new Vector(50, 565), 5), new CounterLight(new Vector(50, 415), 2), 
+// Firework manager
+new FireworkParticleManager(960, 720));
 // Manually link up for now
 for (let i = 0; i < 3; i++) {
     game.components.push(new SimpleCircuit(game.searchComponents(Button)[i], game.searchComponents(Light)[i]));
