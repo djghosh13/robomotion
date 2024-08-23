@@ -19,26 +19,8 @@ type HSLColor = {
 const vsSource: string = `
 attribute vec4 aVertexPosition;
 attribute vec4 aVertexColor;
-uniform lowp float uTime;
+attribute lowp float aVertexTime;
 uniform lowp vec2 uScreenSize;
-varying lowp vec4 vColor;
-
-void main() {
-    gl_Position.x = 2.0 * aVertexPosition.x / uScreenSize.x - 1.0;
-    gl_Position.y = 1.0 - 2.0 * aVertexPosition.y / uScreenSize.y;
-    gl_Position.z = 1.0;
-    gl_Position.w = 1.0;
-    gl_PointSize = 1.5 * (2.0 + aVertexPosition.z);
-    vColor = vec4(
-        aVertexColor.x,
-        aVertexColor.y * min(1.5 * uTime * uTime, 1.0),
-        clamp(aVertexColor.z + 20.0 * aVertexPosition.z, 0.0, 100.0) * uTime,
-        min(1.5 * uTime * uTime, 1.0) * min(uTime / 0.2, 1.0)
-    );
-}
-`;
-const fsSource: string = `
-uniform lowp float uTime;
 varying lowp vec4 vColor;
 
 lowp vec3 hsl2rgb(lowp vec3 hsl) {
@@ -54,7 +36,26 @@ lowp vec3 hsl2rgb(lowp vec3 hsl) {
 }
 
 void main() {
-    gl_FragColor = vec4(hsl2rgb(vColor.xyz), vColor.a);
+    gl_Position.x = 2.0 * aVertexPosition.x / uScreenSize.x - 1.0;
+    gl_Position.y = 1.0 - 2.0 * aVertexPosition.y / uScreenSize.y;
+    gl_Position.z = 1.0;
+    gl_Position.w = 1.0;
+    gl_PointSize = 1.5 * (2.0 + aVertexPosition.z);
+    vColor = vec4(
+        hsl2rgb(vec3(
+            aVertexColor.x,
+            aVertexColor.y * min(1.5 * aVertexTime * aVertexTime, 1.0),
+            clamp(aVertexColor.z + 20.0 * aVertexPosition.z, 0.0, 100.0) * aVertexTime
+        )),
+        min(1.5 * aVertexTime * aVertexTime, 1.0) * min(aVertexTime / 0.2, 1.0)
+    );
+}
+`;
+const fsSource: string = `
+varying lowp vec4 vColor;
+
+void main() {
+    gl_FragColor = vColor;
 }
 `;
 const vsFadeSource: string = `
@@ -111,6 +112,7 @@ class FireworkParticleManager implements IComponent {
     fadeShaderProgram: WebGLProgram;
     vertexBuffer: WebGLBuffer;
     colorBuffer: WebGLBuffer;
+    timeBuffer: WebGLBuffer;
     constructor(public width: number = 640, public height: number = 480) {
         this.explosions = [];
         let canvas = new OffscreenCanvas(this.width, this.height);
@@ -120,6 +122,7 @@ class FireworkParticleManager implements IComponent {
         this.fadeShaderProgram = buildShaderProgram(this.gl, vsFadeSource, fsFadeSource)!;
         this.vertexBuffer = this.gl.createBuffer()!;
         this.colorBuffer = this.gl.createBuffer()!;
+        this.timeBuffer = this.gl.createBuffer()!;
         this.gl.enable(this.gl.BLEND);
     }
     update(game: Game) {
@@ -148,54 +151,49 @@ class FireworkParticleManager implements IComponent {
             this.gl.ONE, this.gl.ONE_MINUS_SRC_COLOR,
             this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA
         );
+        let totalLength = this.explosions.reduce((len, explosion) => len + explosion.particles.length, 0);
+        let positionData = new Float32Array(3 * totalLength);
+        let colorData = new Float32Array(3 * totalLength);
+        let timeData = new Float32Array(totalLength);
+        let dataIndex = 0;
         for (let explosion of this.explosions) {
-            let positionData = new Float32Array(3 * explosion.particles.length);
-            let colorData = new Float32Array(3 * explosion.particles.length);
             for (let i = 0; i < explosion.particles.length; i++) {
                 // Set vertex position
                 let pos = explosion.particles[i]['position'].add(explosion.position);
                 positionData.set([
                     pos.x, pos.y, Math.tanh(explosion.particles[i]['z'])
-                ], 3 * i);
+                ], 3 * dataIndex);
                 // Set vertex color
                 let color = FireworkExplosion.ELEMENT_COLOR.get(explosion.particles[i]['element'])!;
                 colorData.set([
                     color['h'], color['s'], color['l'],
-                ], 3 * i);
+                ], 3 * dataIndex);
+                // Set time
+                timeData.set([
+                    explosion.lifetime / explosion.maxLifetime
+                ], dataIndex);
+                dataIndex++;
             }
-            // Vertex buffer
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-            this.gl.bufferData(
-                this.gl.ARRAY_BUFFER,
-                positionData,
-                this.gl.DYNAMIC_DRAW
-            );
-            let vertexPositionPointer = this.gl.getAttribLocation(this.shaderProgram, "aVertexPosition");
-            this.gl.vertexAttribPointer(vertexPositionPointer, 3, this.gl.FLOAT, false, 0, 0);
-            this.gl.enableVertexAttribArray(vertexPositionPointer);
-            // Color buffer
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorBuffer);
-            this.gl.bufferData(
-                this.gl.ARRAY_BUFFER,
-                colorData,
-                this.gl.DYNAMIC_DRAW
-            );
-            let vertexColorPointer = this.gl.getAttribLocation(this.shaderProgram, "aVertexColor");
-            this.gl.vertexAttribPointer(vertexColorPointer, 3, this.gl.FLOAT, false, 0, 0);
-            this.gl.enableVertexAttribArray(vertexColorPointer);
-            // Draw
-            this.gl.useProgram(this.shaderProgram);
-            this.gl.uniform1f(
-                this.gl.getUniformLocation(this.shaderProgram, "uTime"),
-                explosion.lifetime / explosion.maxLifetime
-            );
-            this.gl.uniform2f(
-                this.gl.getUniformLocation(this.shaderProgram, "uScreenSize"),
-                this.width, this.height
-            );
-            this.gl.drawArrays(this.gl.POINTS, 0, explosion.particles.length);
         }
+        // Vertex buffer
+        this.bindVertexBuffer("aVertexPosition", this.vertexBuffer, positionData, 3);
+        this.bindVertexBuffer("aVertexColor", this.colorBuffer, colorData, 3);
+        this.bindVertexBuffer("aVertexTime", this.timeBuffer, timeData, 1);
+        // Draw
+        this.gl.useProgram(this.shaderProgram);
+        this.gl.uniform2f(
+            this.gl.getUniformLocation(this.shaderProgram, "uScreenSize"),
+            this.width, this.height
+        );
+        this.gl.drawArrays(this.gl.POINTS, 0, totalLength);
         ctx.drawImage(this.gl.canvas, 0, 0);
+    }
+    bindVertexBuffer(variable: string, buffer: WebGLBuffer, data: Float32Array, size: number) {
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, data, this.gl.DYNAMIC_DRAW);
+        let pointer = this.gl.getAttribLocation(this.shaderProgram, variable);
+        this.gl.vertexAttribPointer(pointer, size, this.gl.FLOAT, false, 0, 0);
+        this.gl.enableVertexAttribArray(pointer);
     }
     applyFadeShader() {
         this.gl.blendFunc(this.gl.ZERO, this.gl.SRC_ALPHA);
