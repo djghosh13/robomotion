@@ -26,12 +26,13 @@ varying lowp vec4 vColor;
 void main() {
     gl_Position.x = 2.0 * aVertexPosition.x / uScreenSize.x - 1.0;
     gl_Position.y = 1.0 - 2.0 * aVertexPosition.y / uScreenSize.y;
-    gl_Position.z = 0.0;
+    gl_Position.z = 1.0;
     gl_Position.w = 1.0;
+    gl_PointSize = 1.5 * (2.0 + aVertexPosition.z);
     vColor = vec4(
         aVertexColor.x,
         aVertexColor.y * min(1.5 * uTime * uTime, 1.0),
-        aVertexColor.z * uTime,
+        clamp(aVertexColor.z + 20.0 * aVertexPosition.z, 0.0, 100.0) * uTime,
         min(1.5 * uTime * uTime, 1.0) * min(uTime / 0.2, 1.0)
     );
 }
@@ -56,6 +57,49 @@ void main() {
     gl_FragColor = vec4(hsl2rgb(vColor.xyz), vColor.a);
 }
 `;
+const vsFadeSource: string = `
+attribute vec4 aVertexPosition;
+
+void main() {
+    gl_Position = aVertexPosition;
+}
+`;
+const fsFadeSource: string = `
+void main() {
+    gl_FragColor = vec4(1, 1, 1, 0.95);
+}
+`;
+
+
+function buildShaderProgram(gl: WebGLRenderingContext, vertexSource: string, fragmentSource: string): WebGLProgram | null {
+    let vShader = gl.createShader(gl.VERTEX_SHADER);
+    let fShader = gl.createShader(gl.FRAGMENT_SHADER);
+    if (vShader != null && fShader != null) {
+        gl.shaderSource(vShader, vertexSource);
+        gl.shaderSource(fShader, fragmentSource);
+        // Compile and log errors
+        for (let shader of [vShader, fShader]) {
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+            }
+        }
+        // Shader program
+        let shaderProgram = gl.createProgram();
+        if (shaderProgram != null) {
+            gl.attachShader(shaderProgram, vShader);
+            gl.attachShader(shaderProgram, fShader);
+            // Link and log errors
+            gl.linkProgram(shaderProgram);
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(shaderProgram));
+            }
+            return shaderProgram;
+        }
+    }
+    return null;
+}
 
 class FireworkParticleManager implements IComponent {
     renderOrder: number = 1000;
@@ -64,6 +108,7 @@ class FireworkParticleManager implements IComponent {
     // Rendering
     gl: WebGLRenderingContext;
     shaderProgram: WebGLProgram;
+    fadeShaderProgram: WebGLProgram;
     vertexBuffer: WebGLBuffer;
     colorBuffer: WebGLBuffer;
     constructor(public width: number = 640, public height: number = 480) {
@@ -71,32 +116,8 @@ class FireworkParticleManager implements IComponent {
         let canvas = new OffscreenCanvas(this.width, this.height);
         // Init WebGL
         this.gl = canvas.getContext("webgl", {"premultipliedAlpha": false})!;
-        let vShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-        let fShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-        if (vShader != null && fShader != null) {
-            this.gl.shaderSource(vShader, vsSource);
-            this.gl.shaderSource(fShader, fsSource);
-            // Compile and log errors
-            for (let shader of [vShader, fShader]) {
-                this.gl.compileShader(shader);
-                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-                    console.error(this.gl.getShaderInfoLog(shader));
-                    this.gl.deleteShader(shader);
-                }
-            }
-            // Shader program
-            let shaderProgram = this.gl.createProgram();
-            if (shaderProgram != null) {
-                this.gl.attachShader(shaderProgram, vShader);
-                this.gl.attachShader(shaderProgram, fShader);
-                // Link and log errors
-                this.gl.linkProgram(shaderProgram);
-                if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
-                    console.error(this.gl.getProgramInfoLog(shaderProgram));
-                }
-                this.shaderProgram = shaderProgram;
-            }
-        }
+        this.shaderProgram = buildShaderProgram(this.gl, vsSource, fsSource)!;
+        this.fadeShaderProgram = buildShaderProgram(this.gl, vsFadeSource, fsFadeSource)!;
         this.vertexBuffer = this.gl.createBuffer()!;
         this.colorBuffer = this.gl.createBuffer()!;
         this.gl.enable(this.gl.BLEND);
@@ -121,33 +142,26 @@ class FireworkParticleManager implements IComponent {
         }
     }
     render(ctx: CanvasRenderingContext2D) {
-        this.gl
-        this.gl.clearColor(0, 0, 0, 1.0);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.applyFadeShader();
+        // Draw fireworks
         this.gl.blendFuncSeparate(
             this.gl.ONE, this.gl.ONE_MINUS_SRC_COLOR,
             this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA
         );
         for (let explosion of this.explosions) {
-            let positionData = new Float32Array(2 * 3 * explosion.particles.length);
-            let colorData = new Float32Array(3 * 3 * explosion.particles.length);
+            let positionData = new Float32Array(3 * explosion.particles.length);
+            let colorData = new Float32Array(3 * explosion.particles.length);
             for (let i = 0; i < explosion.particles.length; i++) {
                 // Set vertex position
                 let pos = explosion.particles[i]['position'].add(explosion.position);
-                let diff = 1;
-                const SQRT_3 = Math.sqrt(3);
                 positionData.set([
-                    pos.x - diff * SQRT_3, pos.y + diff,
-                    pos.x, pos.y - diff * 2,
-                    pos.x + diff * SQRT_3, pos.y + diff,
-                ], 2 * 3 * i);
+                    pos.x, pos.y, Math.tanh(explosion.particles[i]['z'])
+                ], 3 * i);
                 // Set vertex color
                 let color = FireworkExplosion.ELEMENT_COLOR.get(explosion.particles[i]['element'])!;
                 colorData.set([
                     color['h'], color['s'], color['l'],
-                    color['h'], color['s'], color['l'],
-                    color['h'], color['s'], color['l'],
-                ], 3 * 3 * i);
+                ], 3 * i);
             }
             // Vertex buffer
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -157,7 +171,7 @@ class FireworkParticleManager implements IComponent {
                 this.gl.DYNAMIC_DRAW
             );
             let vertexPositionPointer = this.gl.getAttribLocation(this.shaderProgram, "aVertexPosition");
-            this.gl.vertexAttribPointer(vertexPositionPointer, 2, this.gl.FLOAT, false, 0, 0);
+            this.gl.vertexAttribPointer(vertexPositionPointer, 3, this.gl.FLOAT, false, 0, 0);
             this.gl.enableVertexAttribArray(vertexPositionPointer);
             // Color buffer
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorBuffer);
@@ -179,12 +193,23 @@ class FireworkParticleManager implements IComponent {
                 this.gl.getUniformLocation(this.shaderProgram, "uScreenSize"),
                 this.width, this.height
             );
-            this.gl.drawArrays(this.gl.TRIANGLES, 0, 3 * explosion.particles.length);
+            this.gl.drawArrays(this.gl.POINTS, 0, explosion.particles.length);
         }
-        // let savedAlpha = ctx.globalAlpha;
-        // ctx.globalAlpha = Math.min(t / 0.2, 1);
         ctx.drawImage(this.gl.canvas, 0, 0);
-        // ctx.globalAlpha = savedAlpha;
+    }
+    applyFadeShader() {
+        this.gl.blendFunc(this.gl.ZERO, this.gl.SRC_ALPHA);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
+        this.gl.bufferData(
+            this.gl.ARRAY_BUFFER,
+            new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+            this.gl.DYNAMIC_DRAW
+        );
+        let vertexPositionPointer = this.gl.getAttribLocation(this.fadeShaderProgram, "aVertexPosition");
+        this.gl.vertexAttribPointer(vertexPositionPointer, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.enableVertexAttribArray(vertexPositionPointer);
+        this.gl.useProgram(this.fadeShaderProgram);
+        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     }
 }
 
