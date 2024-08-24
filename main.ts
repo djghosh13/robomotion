@@ -10,10 +10,17 @@ ARMATURE_PRESETS.set("example_level", buildArmGraphics({
         { length: 45, speed: 5, width: 18 }
     ]
 }));
+ARMATURE_PRESETS.set("example_secondary", buildArmGraphics({
+    root: [ 450, 500 ],
+    bones: [
+        { length: 80, speed: 3, width: 20 },
+        { length: 45, speed: 5, width: 18 }
+    ]
+}));
 
 var game = new Game();
-game.armature = ARMATURE_PRESETS.get("example_level")!;
-game.components = [];
+game.spawnObject(new RobotArm(ARMATURE_PRESETS.get("example_level")!, MouseController.instance));
+game.spawnObject(new RobotArm(ARMATURE_PRESETS.get("example_secondary")!, MouseController.instance));
 game.components.push(
     // Wire lights
     new WireLight([
@@ -139,7 +146,7 @@ game.components.push(
 
     new FireworkSpawner(new Vector(50, 490), 2, 4, []),
 
-    new Carrier(game.armature[0].parent!, [
+    new Carrier(game.robotArms[0].armature[0].parent!, [
         new Vector(280, 380),
         new Vector(580, 415)
     ], { speed: 200 }),
@@ -294,6 +301,10 @@ document.onreadystatechange = function(event) {
             window.setInterval(update, FRAME_INTERVAL, context);
             canvas.addEventListener("mousemove", event => {
                 mousePosition = new Vector(event.offsetX, event.offsetY);
+                let debugCoords: HTMLElement | null = document.querySelector("#mouse-coords");
+                if (debugCoords != null) {
+                    debugCoords.innerText = `(${mousePosition.x.toFixed(1)}, ${mousePosition.y.toFixed(1)})`;
+                }
             });
             canvas.addEventListener("mousedown", event => {
                 isMousePressed = true;
@@ -311,5 +322,20 @@ document.onreadystatechange = function(event) {
                 mouseJustPressed = false;
             })
         }
+        // Debug
+        document.addEventListener("keydown", event => {
+            if (event.key.toLowerCase() == "f") {
+                let debug: HTMLElement | null = document.querySelector("#debug-fps");
+                if (debug != null) {
+                    debug.style['display'] = (debug.style['display'] == "none") ? "initial" : "none";
+                }
+            }
+            if (event.key.toLowerCase() == "c") {
+                let debug: HTMLElement | null = document.querySelector("#debug-coords");
+                if (debug != null) {
+                    debug.style['display'] = (debug.style['display'] == "none") ? "initial" : "none";
+                }
+            }
+        });
     }
 };

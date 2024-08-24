@@ -147,7 +147,7 @@ class FireworkLauncher extends SimpleAttractor {
         super.update(game);
         if (this.input == 1 && this.heldObject instanceof FireworkBox && this.heldObject.prepared) {
             // TODO Convoluted, fix
-            if (game.heldObject != this.heldObject && this.heldObject.velocity.norm < 1) {
+            if (game.heldBy(this.heldObject).length == 0 && this.heldObject.velocity.norm < 1) {
                 // Fire!
                 game.spawnObject(new FireworkTrail(this.position.add(new Vector(0, -100)), 280, this.heldObject.contents));
                 game.destroyObject(this.heldObject);

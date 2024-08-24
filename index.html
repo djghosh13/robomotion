@@ -9,6 +9,7 @@
         <script type="text/javascript" src="js/collisions.js"></script>
         <script type="text/javascript" src="js/game.js"></script>
         <script type="text/javascript" src="js/components.js"></script>
+        <script type="text/javascript" src="js/robotarm.js"></script>
         <script type="text/javascript" src="js/physicsobjects.js"></script>
         <script type="text/javascript" src="js/circuits.js"></script>
         <script type="text/javascript" src="js/fireworks.js"></script>
@@ -17,7 +18,12 @@
     </head>
     <body style="background-color: hsl(264, 30%, 8%);">
         <canvas id="simulation" width="960" height="720" style="cursor: default;"></canvas>
-        <div style="position: fixed; left: 1em; bottom: 1em; font-family: monospace; font-size: 1.5em; color: #ccc9; pointer-events: none; user-select: none;">
+        <div id="debug-coords" style="position: relative; left: 0; bottom: 0; font-family: monospace; font-size: 1.5em;
+                color: #ccc; pointer-events: none; user-select: none; display: none;">
+            <span id="mouse-coords"></span>
+        </div>
+        <div id="debug-fps" style="position: fixed; left: 1em; bottom: 1em; font-family: monospace; font-size: 1.5em;
+                color: #ccc9; pointer-events: none; user-select: none; display: none;">
             FPS:
             <span id="fps-counter"></span>
             <br />

@@ -39,14 +39,17 @@ class SimpleObject extends PhysicsObject implements IGrabbable {
         super(position, width * 0.4);
         this.width = width;
     }
-    update(this: SimpleObject, game: Game) {
-        if (game.heldObject == this) {
-            let newPosition = game.robotArm.end;
-            this.velocity = newPosition.sub(this.position);
-            this.position = newPosition;
-        } else {
+    update(game: Game) {
+        let holders = game.heldBy(this);
+        if (holders.length == 0) {
             this.position = this.position.add(this.velocity);
             this.velocity = this.velocity.mul(0.9);
+        } else {
+            for (let robotArm of holders) {
+                let newPosition = robotArm.grabber.end;
+                this.velocity = newPosition.sub(this.position);
+                this.position = newPosition;
+            }
         }
         super.update(game);
     }

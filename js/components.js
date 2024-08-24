@@ -36,13 +36,15 @@ class Button {
         this.pressed = Math.max(this.pressed - this.speed * FRAME_INTERVAL / 1000, 0);
         // Pushed by robot hand
         // TODO allow being pushed by arm, not just end
-        for (let i = 0; i < game.armature.length; i++) {
-            let relativePosition = game.armature[i].end.sub(this.position).rotate(-this.facing.angle);
-            let relativeCrossAxis = relativePosition.y / this.width;
-            let relativeMainAxis = relativePosition.x / this.depth;
-            if (-0.49 < relativeCrossAxis && relativeCrossAxis < 0.49 &&
-                0 <= relativeMainAxis && relativeMainAxis < 1) {
-                this.pressed = Math.max(this.pressed, 1 - Math.max(relativeMainAxis, this.minDepth / this.depth));
+        for (let robotArm of game.robotArms) {
+            for (let i = 0; i < robotArm.armature.length; i++) {
+                let relativePosition = robotArm.armature[i].end.sub(this.position).rotate(-this.facing.angle);
+                let relativeCrossAxis = relativePosition.y / this.width;
+                let relativeMainAxis = relativePosition.x / this.depth;
+                if (-0.49 < relativeCrossAxis && relativeCrossAxis < 0.49 &&
+                    0 <= relativeMainAxis && relativeMainAxis < 1) {
+                    this.pressed = Math.max(this.pressed, 1 - Math.max(relativeMainAxis, this.minDepth / this.depth));
+                }
             }
         }
     }
@@ -84,17 +86,22 @@ class ChainPull {
         this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game) {
-        if (game.heldObject == this) {
-            let offset = game.robotArm.end.sub(this.position);
-            if (offset.norm > this.maxLength) {
-                this.endPosition = this.position.add(offset.normalized().mul(this.maxLength));
-            }
-            else {
-                this.endPosition = game.robotArm.end;
-            }
+        let holders = game.heldBy(this);
+        if (holders.length == 0) {
+            this.endPosition = this.position.add(new Vector(0, this.length));
         }
         else {
-            this.endPosition = this.position.add(new Vector(0, this.length));
+            for (let robotArm of holders) {
+                if (robotArm.heldObject == this) {
+                    let offset = robotArm.grabber.end.sub(this.position);
+                    if (offset.norm > this.maxLength) {
+                        this.endPosition = this.position.add(offset.normalized().mul(this.maxLength));
+                    }
+                    else {
+                        this.endPosition = robotArm.grabber.end;
+                    }
+                }
+            }
         }
     }
     render(ctx) {
@@ -176,11 +183,14 @@ class Lever {
         this.speed = speed, this.length = length, this.maxRotation = maxRotation;
     }
     update(game) {
-        if (game.heldObject == this) {
-            this.rotation = Math.min(Math.max(clipAngle(game.robotArm.end.sub(this.position).angle - this.facing.angle), -this.maxRotation), this.maxRotation);
+        let holders = game.heldBy(this);
+        if (holders.length == 0) {
+            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -this.maxRotation);
         }
         else {
-            this.rotation = Math.max(this.rotation - this.speed * FRAME_INTERVAL / 1000, -this.maxRotation);
+            for (let robotArm of holders) {
+                this.rotation = Math.min(Math.max(clipAngle(robotArm.grabber.end.sub(this.position).angle - this.facing.angle), -this.maxRotation), this.maxRotation);
+            }
         }
     }
     adjustTarget(target) {

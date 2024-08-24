@@ -2,5 +2,5 @@
 
 ## Next steps
 
-1. More robust object spawning and deletion
+1. Camera
 2. Level editor
