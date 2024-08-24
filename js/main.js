@@ -1,4 +1,4 @@
-const FRAME_INTERVAL = 17;
+const FRAME_INTERVAL = 16.7;
 const ARMATURE_PRESETS = new Map();
 ARMATURE_PRESETS.set("example_level", buildArmGraphics({
     root: [280, 380],
@@ -122,40 +122,54 @@ function background(ctx, color) {
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.closePath();
     ctx.lineWidth = 1;
-    // for (let x = 0; x < ctx.canvas.width; x += 10) {
-    //     ctx.strokeStyle = (x % 50 == 0) ? "#222" : "#111";
-    //     ctx.beginPath();
-    //     ctx.moveTo(x, 0);
-    //     ctx.lineTo(x, ctx.canvas.height);
-    //     ctx.closePath();
-    //     ctx.stroke();
-    // }
-    // for (let y = 0; y < ctx.canvas.height; y += 10) {
-    //     ctx.strokeStyle = (y % 50 == 0) ? "#222" : "#111";
-    //     ctx.beginPath();
-    //     ctx.moveTo(0, y);
-    //     ctx.lineTo(ctx.canvas.width, y);
-    //     ctx.closePath();
-    //     ctx.stroke();
-    // }
+    for (let x = 0; x < ctx.canvas.width; x += 10) {
+        ctx.strokeStyle = (x % 50 == 0) ? "#222" : "#111";
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, ctx.canvas.height);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    for (let y = 0; y < ctx.canvas.height; y += 10) {
+        ctx.strokeStyle = (y % 50 == 0) ? "#222" : "#111";
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(ctx.canvas.width, y);
+        ctx.closePath();
+        ctx.stroke();
+    }
 }
+var spfHistory = Array(60).fill(FRAME_INTERVAL);
 var msptHistory = Array(60).fill(0);
-var averageMspt = 0;
+var averageSPF = FRAME_INTERVAL;
+var averageMSPT = 0;
+var lastFrame = Date.now();
 function update(ctx) {
     if (!run)
         return;
     let startTime = Date.now();
     game.update();
     game.render();
-    // Update ms/tick
-    let mspt = Date.now() - startTime;
+    let endTime = Date.now();
+    let spf = endTime - lastFrame;
+    let mspt = endTime - startTime;
+    lastFrame = endTime;
+    spfHistory.push(spf);
     msptHistory.push(mspt);
-    averageMspt += (mspt - msptHistory.shift()) / msptHistory.length;
-    let fpsCounter = document.getElementById("fps");
+    averageSPF += (spf - spfHistory.shift()) / spfHistory.length;
+    averageMSPT += (mspt - msptHistory.shift()) / msptHistory.length;
+    let fpsCounter = document.getElementById("fps-counter");
     if (fpsCounter != null) {
-        fpsCounter.innerText = averageMspt.toFixed(1);
-        fpsCounter.style.color = (averageMspt < FRAME_INTERVAL / 2) ? "#6c6"
-            : (averageMspt < FRAME_INTERVAL) ? "#cc6"
+        fpsCounter.innerText = (1000 / averageSPF).toFixed(1);
+        fpsCounter.style.color = (averageSPF < FRAME_INTERVAL * 1.1) ? "#6c6"
+            : (averageSPF < FRAME_INTERVAL * 2) ? "#cc6"
+                : "#c33";
+    }
+    let msptCounter = document.getElementById("mspt-counter");
+    if (msptCounter != null) {
+        msptCounter.innerText = averageMSPT.toFixed(1);
+        msptCounter.style.color = (averageMSPT < FRAME_INTERVAL / 2) ? "#6c6"
+            : (averageMSPT < FRAME_INTERVAL) ? "#cc6"
                 : "#c33";
     }
 }

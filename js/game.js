@@ -46,6 +46,7 @@ class Game {
             desiredTarget = this.heldObject.adjustTarget(desiredTarget);
         }
         const MAX_ITER = 4;
+        let firstCollision = null;
         for (let i = 0; i < MAX_ITER; i++) {
             let moments = computeMoI(this.armature);
             for (let j = 0; j < this.armature.length; j++) {
@@ -58,6 +59,9 @@ class Game {
                 collisionCheck: for (let k = j; k < this.armature.length; k++) {
                     let colliders = (k == this.armature.length - 1) ? endColliders : anyColliders;
                     while (getCollision(this.armature[k], colliders) != null) {
+                        if (firstCollision == null) {
+                            firstCollision = getCollision(this.armature[k], colliders);
+                        }
                         fixes++;
                         desiredRotation /= 2;
                         this.armature[j].angle -= desiredRotation;
@@ -88,6 +92,9 @@ class Game {
                     }
                 }
             }
+        }
+        if (firstCollision != null && Math.random() < 0.1) {
+            game.spawnObject(new Sparks(firstCollision.origin));
         }
         // Update components
         for (let comp of this.components) {

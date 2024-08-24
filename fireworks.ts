@@ -1,6 +1,7 @@
 enum FireworkElement {
     GUNPOWDER,
-    COPPER, STRONTIUM, CALCIUM, SODIUM, BARIUM, TITANIUM, ALUMINUM
+    COPPER, STRONTIUM, CALCIUM, SODIUM, BARIUM, TITANIUM, ALUMINUM,
+    SPARKS,
 };
 type FireworkParticle = {
     position: Vector;
@@ -147,10 +148,7 @@ class FireworkParticleManager implements IComponent {
     render(ctx: CanvasRenderingContext2D) {
         this.applyFadeShader();
         // Draw fireworks
-        this.gl.blendFuncSeparate(
-            this.gl.ONE, this.gl.ONE_MINUS_SRC_COLOR,
-            this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA
-        );
+        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_COLOR);
         let totalLength = this.explosions.reduce((len, explosion) => len + explosion.particles.length, 0);
         let positionData = new Float32Array(3 * totalLength);
         let colorData = new Float32Array(3 * totalLength);
@@ -221,7 +219,8 @@ class FireworkExplosion implements IComponent {
         [FireworkElement.SODIUM, {h: 40, s: 90, l: 55}],
         [FireworkElement.BARIUM, {h: 125, s: 100, l: 45}],
         [FireworkElement.TITANIUM, {h: 240, s: 10, l: 55}],
-        [FireworkElement.ALUMINUM, {h: 240, s: 0, l: 80}]
+        [FireworkElement.ALUMINUM, {h: 240, s: 0, l: 80}],
+        [FireworkElement.SPARKS, {h: 15, s: 100, l: 75}],
     ]);
     maxLifetime: number;
     lifetime: number;
@@ -297,5 +296,37 @@ class FireworkTrail extends FireworkExplosion {
                 this.power, this.elements
             ));
         }
+    }
+}
+
+
+class Sparks extends FireworkExplosion {
+    constructor(public position: Vector) {
+        super(position, 0, []);
+        this.lifetime = this.maxLifetime = 2;
+        // Spawn particles
+        let angle = Math.random() * TWO_PI;
+        let magnitude = 100 * (1 + (Math.random() - 0.5));
+        this.particles.push({
+            position: Vector.ZERO,
+            z: -1,
+            velocity: Vector.fromAngle(angle).mul(magnitude),
+            zvelocity: 10 * Math.pow(Math.random() - 0.5, 3),
+            element: FireworkElement.SPARKS
+        });
+        this.particles.push({
+            position: Vector.ZERO,
+            z: -1,
+            velocity: Vector.fromAngle(angle + Math.PI / 4 * Math.random()).mul(magnitude),
+            zvelocity: 10 * Math.pow(Math.random() - 0.5, 3),
+            element: FireworkElement.SPARKS
+        });
+        this.particles.sort((a, b) => a['zvelocity'] - b['zvelocity']);
+    }
+    update(game: Game) {
+        if (this.lifetime <= 0.8 * this.maxLifetime) {
+            this.lifetime = 0;
+        }
+        super.update(game);
     }
 }
