@@ -1,6 +1,7 @@
 class MouseController {
     constructor() {
         this.renderOrder = 0;
+        this.targetPosition = Vector.ZERO;
     }
     isGrabbing() {
         return isMousePressed;
@@ -9,9 +10,18 @@ class MouseController {
         return mouseJustPressed;
     }
     getTarget() {
-        return mousePosition;
+        return this.targetPosition;
     }
-    update(game) { }
+    update(game) {
+        let camera = game.getCamera();
+        if (camera != null) {
+            let offset = SCREEN_SIZE.div(2).sub(camera.position);
+            this.targetPosition = mousePosition.sub(offset);
+        }
+        else {
+            this.targetPosition = mousePosition;
+        }
+    }
     render(ctx) { }
 }
 MouseController.instance = new MouseController();

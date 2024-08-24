@@ -7,6 +7,7 @@ interface Controller extends IComponent {
 class MouseController implements Controller {
     renderOrder: number = 0;
     static readonly instance: MouseController = new MouseController();
+    private targetPosition: Vector = Vector.ZERO;
     isGrabbing() {
         return isMousePressed;
     }
@@ -14,9 +15,17 @@ class MouseController implements Controller {
         return mouseJustPressed;
     }
     getTarget() {
-        return mousePosition;
+        return this.targetPosition;
     }
-    update(game: Game) { }
+    update(game: Game) {
+        let camera = game.getCamera();
+        if (camera != null) {
+            let offset = SCREEN_SIZE.div(2).sub(camera.position);
+            this.targetPosition = mousePosition.sub(offset);
+        } else {
+            this.targetPosition = mousePosition;
+        }
+    }
     render(ctx: CanvasRenderingContext2D) { }
 }
 

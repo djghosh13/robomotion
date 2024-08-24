@@ -1,4 +1,5 @@
 const FRAME_INTERVAL = 16.7;
+const SCREEN_SIZE = new Vector(960, 720);
 
 const ARMATURE_PRESETS = new Map<string, BoneGraphics[]>();
 ARMATURE_PRESETS.set("example_level", buildArmGraphics({
@@ -20,7 +21,7 @@ ARMATURE_PRESETS.set("example_secondary", buildArmGraphics({
 
 var game = new Game();
 game.spawnObject(new RobotArm(ARMATURE_PRESETS.get("example_level")!, MouseController.instance));
-game.spawnObject(new RobotArm(ARMATURE_PRESETS.get("example_secondary")!, MouseController.instance));
+game.spawnObject(new Camera(game.robotArms[0], { }));
 game.components.push(
     // Wire lights
     new WireLight([
@@ -310,11 +311,12 @@ document.onreadystatechange = function(event) {
                 isMousePressed = true;
                 mouseJustPressed = true;
                 // DEBUG
-                // game.spawnObject(new FireworkExplosion(
-                //     mousePosition, 280, [FireworkElement.GUNPOWDER, FireworkElement.GUNPOWDER]
-                // ));
                 game.spawnObject(new FireworkTrail(
-                    mousePosition, 280, new Array(3).fill(1 + Math.floor(mousePosition.x / 240))
+                    MouseController.instance.getTarget(),
+                    280,
+                    new Array(3).fill(
+                        1 + (Math.floor(MouseController.instance.getTarget().x / 100) % 7 + 7) % 7
+                    )
                 ));
             })
             canvas.addEventListener("mouseup", event => {

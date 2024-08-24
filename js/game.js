@@ -12,13 +12,24 @@ class Game {
         mouseJustPressed = false;
     }
     render() {
+        this.ctx.save();
         setup(this.ctx);
+        // Adjust for camera
+        let camera = this.getCamera();
+        if (camera != null) {
+            let offset = SCREEN_SIZE.div(2).sub(camera.position);
+            this.ctx.translate(offset.x, offset.y);
+        }
         // Get held objects
-        let heldObjects = new Set();
+        let specialObjects = new Set();
         for (let robotArm of this.robotArms) {
             if (robotArm.heldObject != null) {
-                heldObjects.add(robotArm.heldObject);
+                specialObjects.add(robotArm.heldObject);
             }
+        }
+        let fireworkManagers = this.searchComponents(FireworkParticleManager);
+        for (let fireworkManager of fireworkManagers) {
+            specialObjects.add(fireworkManager);
         }
         // Get correct render order
         let renderOrdering = [...this.components].sort((a, b) => a.renderOrder - b.renderOrder);
@@ -26,7 +37,7 @@ class Game {
         let postIndex = renderOrdering.reduce((splitIndex, comp, curIndex) => (comp.renderOrder > 0) ? splitIndex : curIndex + 1, 0);
         // Draw background (negative renderOrder)
         for (let i = 0; i < preIndex; i++) {
-            if (!heldObjects.has(renderOrdering[i])) {
+            if (!specialObjects.has(renderOrdering[i])) {
                 renderOrdering[i].render(this.ctx);
             }
         }
@@ -35,7 +46,7 @@ class Game {
             // Draw base arm
             robotArm.render(this.ctx);
             // Draw held object
-            if (robotArm.heldObject != null && heldObjects.has(robotArm.heldObject)) {
+            if (robotArm.heldObject != null && specialObjects.has(robotArm.heldObject)) {
                 robotArm.heldObject.render(this.ctx);
             }
             // Draw grabber arm
@@ -43,15 +54,27 @@ class Game {
         }
         // Draw foreground (positive renderOrder)
         for (let i = postIndex; i < renderOrdering.length; i++) {
-            if (!heldObjects.has(renderOrdering[i])) {
+            if (!specialObjects.has(renderOrdering[i])) {
                 renderOrdering[i].render(this.ctx);
             }
+        }
+        this.ctx.restore();
+        // Draw fireworks (shader)
+        for (let fireworkManager of fireworkManagers) {
+            fireworkManager.render(this.ctx);
         }
     }
     searchComponents(cls) {
         return this.components.filter(function (x) {
             return x instanceof cls;
         });
+    }
+    getCamera() {
+        let cameras = this.searchComponents(Camera);
+        if (cameras.length > 0) {
+            return cameras[0];
+        }
+        return null;
     }
     heldBy(object) {
         let holders = [];
