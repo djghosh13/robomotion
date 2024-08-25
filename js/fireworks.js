@@ -11,84 +11,6 @@ var FireworkElement;
     FireworkElement[FireworkElement["SPARKS"] = 8] = "SPARKS";
 })(FireworkElement || (FireworkElement = {}));
 ;
-const vsSource = `
-precision mediump float;
-attribute vec4 aVertexPosition;
-attribute vec4 aVertexColor;
-attribute float aVertexTime;
-uniform vec2 uScreenSize; // Half screen size
-uniform vec2 uScreenPadding;
-varying vec2 vTextureCoords;
-varying vec4 vColor;
-
-vec3 hsl2rgb(vec3 hsl) {
-    float C = (1.0 - abs(0.02 * hsl.z - 1.0)) * (0.01 * hsl.y);
-    float X = C * (1.0 - abs(mod(hsl.x / 60.0, 2.0) - 1.0));
-    float m = 0.01 * hsl.z - C / 2.0;
-    if (hsl.x <  60.0) return vec3(C + m, X + m,     m);
-    if (hsl.x < 120.0) return vec3(X + m, C + m,     m);
-    if (hsl.x < 180.0) return vec3(    m, C + m, X + m);
-    if (hsl.x < 240.0) return vec3(    m, X + m, C + m);
-    if (hsl.x < 300.0) return vec3(X + m,     m, C + m);
-                       return vec3(C + m,     m, X + m);
-}
-
-void main() {
-    vec2 normPos = (aVertexPosition.xy + uScreenPadding) / (uScreenPadding + uScreenSize) - 1.0;
-    gl_Position.x = normPos.x;
-    gl_Position.y = -normPos.y;
-    gl_Position.z = 1.0 - aVertexTime;
-    gl_Position.w = 1.0;
-    gl_PointSize = 1.5 * (2.0 + aVertexPosition.z);
-    vTextureCoords = (gl_Position.xy + 1.0) / 2.0;
-    vColor = vec4(
-        hsl2rgb(vec3(
-            aVertexColor.x,
-            aVertexColor.y * min(1.2 * aVertexTime * aVertexTime, 1.0),
-            clamp(aVertexColor.z + 20.0 * aVertexPosition.z, 0.0, 100.0) * aVertexTime
-        )),
-        min(1.5 * aVertexTime * aVertexTime, 1.0)
-    );
-}
-`;
-const fsSource = `
-precision lowp float;
-uniform sampler2D uTexture;
-varying vec2 vTextureCoords;
-varying vec4 vColor;
-
-void main() {
-    vec4 baseColor = texture2D(uTexture, vTextureCoords);
-    gl_FragColor = vColor + baseColor * baseColor.a * (1.0 - vColor);
-}
-`;
-const vsFadeSource = `
-precision mediump float;
-attribute vec4 aVertexPosition;
-uniform vec2 uScreenSize; // Half screen size
-uniform vec2 uScreenPadding;
-uniform vec2 uTranslate;
-varying vec2 vTextureCoords;
-
-void main() {
-    gl_Position = vec4(aVertexPosition.xy, 1.0, 1.0);
-    vTextureCoords = (gl_Position.xy - uTranslate / (uScreenSize + uScreenPadding) + 1.0) / 2.0;
-}
-`;
-const fsFadeSource = `
-precision lowp float;
-uniform sampler2D uTexture;
-varying vec2 vTextureCoords;
-
-void main() {
-    vec4 oldColor = vec4(0);
-    if (0.0 < vTextureCoords.x && vTextureCoords.x < 1.0 &&
-            0.0 < vTextureCoords.y && vTextureCoords.y < 1.0) {
-        oldColor = texture2D(uTexture, vTextureCoords);
-    }
-    gl_FragColor = vec4(oldColor.rgb, max(oldColor.a * 0.95 - 0.01, 0.0));
-}
-`;
 function buildShaderProgram(gl, vertexSource, fragmentSource) {
     let vShader = gl.createShader(gl.VERTEX_SHADER);
     let fShader = gl.createShader(gl.FRAGMENT_SHADER);
@@ -121,23 +43,40 @@ function buildShaderProgram(gl, vertexSource, fragmentSource) {
 class FireworkParticleManager {
     constructor() {
         this.renderOrder = 1000;
-        this.CANVAS_PADDING = new Vector(10, 10);
+        this.CANVAS_PADDING = SCREEN_SIZE.mul(0.25).floor();
         this.explosions = [];
         this.cameraPosition = this.previousCameraPosition = Vector.ZERO;
         let canvas = new OffscreenCanvas(SCREEN_SIZE.x + 2 * this.CANVAS_PADDING.x, SCREEN_SIZE.y + 2 * this.CANVAS_PADDING.y);
         // Init WebGL
         this.gl = canvas.getContext("webgl", { "premultipliedAlpha": false });
-        this.shaderProgram = buildShaderProgram(this.gl, vsSource, fsSource);
-        this.fadeShaderProgram = buildShaderProgram(this.gl, vsFadeSource, fsFadeSource);
+        this.particleShaderProgram = buildShaderProgram(this.gl, particleVSSource, particleFSSource);
+        this.overlayShaderProgram = buildShaderProgram(this.gl, overlayVSSource, overlayFSSource);
         this.vertexBuffer = this.gl.createBuffer();
         this.colorBuffer = this.gl.createBuffer();
         this.timeBuffer = this.gl.createBuffer();
-        this.lastTexture = this.gl.createTexture();
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.lastTexture);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, canvas.width, canvas.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array(4 * canvas.width * canvas.height).fill(255));
+        {
+            // Create particle texture
+            this.particleTexture = this.gl.createTexture();
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.particleTexture);
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+            // Create particle framebuffer
+            this.particleFramebuffer = this.gl.createFramebuffer();
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.particleFramebuffer);
+            this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.particleTexture, 0);
+        }
+        {
+            // Create intermediate texture
+            this.overlayTexture = this.gl.createTexture();
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.overlayTexture);
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array(4 * this.gl.drawingBufferWidth * this.gl.drawingBufferHeight).fill(0));
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+        }
+        this.gl.enable(this.gl.BLEND);
     }
     update(game) {
         // Remove dead fireworks
@@ -161,12 +100,16 @@ class FireworkParticleManager {
         this.cameraPosition = game.getCameraOffset();
     }
     render(ctx) {
+        // Draw firework particles (pre-multiplied alpha)
+        this.runParticleShader();
+        // Combine trail and particles
+        this.runOverlayShader();
         this.copyToTexture();
-        this.gl.clearColor(0, 0, 0, 0);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-        this.applyFadeShader();
-        // Draw fireworks
-        this.copyToTexture();
+        // Draw to main canvas
+        ctx.drawImage(this.gl.canvas, this.CANVAS_PADDING.x, this.CANVAS_PADDING.y, SCREEN_SIZE.x, SCREEN_SIZE.y, 0, 0, SCREEN_SIZE.x, SCREEN_SIZE.y);
+    }
+    runParticleShader() {
+        // Concatenate particle data
         let totalLength = this.explosions.reduce((len, explosion) => len + explosion.particles.length, 0);
         let positionData = new Float32Array(3 * totalLength);
         let colorData = new Float32Array(3 * totalLength);
@@ -191,57 +134,58 @@ class FireworkParticleManager {
                 dataIndex++;
             }
         }
-        // Vertex buffer
-        this.bindVertexBuffer("aVertexPosition", this.vertexBuffer, positionData, 3);
-        this.bindVertexBuffer("aVertexColor", this.colorBuffer, colorData, 3);
-        this.bindVertexBuffer("aVertexTime", this.timeBuffer, timeData, 1);
-        // Draw
-        this.gl.useProgram(this.shaderProgram);
-        this.gl.uniform2f(this.gl.getUniformLocation(this.shaderProgram, "uScreenSize"), SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2);
-        this.gl.uniform2f(this.gl.getUniformLocation(this.shaderProgram, "uScreenPadding"), this.CANVAS_PADDING.x, this.CANVAS_PADDING.y);
-        {
-            this.gl.activeTexture(this.gl.TEXTURE0);
-            this.gl.bindTexture(this.gl.TEXTURE_2D, this.lastTexture);
-            let pointer = this.gl.getUniformLocation(this.shaderProgram, "uTexture");
-            this.gl.uniform1i(pointer, 0);
-        }
+        this.gl.useProgram(this.particleShaderProgram);
+        // Set attributes and uniforms
+        this.bindVertexBuffer(this.particleShaderProgram, "aVertexPosition", this.vertexBuffer, positionData, 3);
+        this.bindVertexBuffer(this.particleShaderProgram, "aVertexColor", this.colorBuffer, colorData, 3);
+        this.bindVertexBuffer(this.particleShaderProgram, "aVertexTime", this.timeBuffer, timeData, 1);
+        this.gl.uniform2f(this.gl.getUniformLocation(this.particleShaderProgram, "uScreenSize"), SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2);
+        this.gl.uniform2f(this.gl.getUniformLocation(this.particleShaderProgram, "uScreenPadding"), this.CANVAS_PADDING.x, this.CANVAS_PADDING.y);
+        // Draw to framebuffer
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.particleFramebuffer);
+        this.gl.clearColor(0, 0, 0, 0);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.gl.blendFuncSeparate(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_COLOR, this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
         this.gl.drawArrays(this.gl.POINTS, 0, totalLength);
-        // Draw to main canvas
-        ctx.drawImage(this.gl.canvas, this.CANVAS_PADDING.x, this.CANVAS_PADDING.y, SCREEN_SIZE.x, SCREEN_SIZE.y, 0, 0, SCREEN_SIZE.x, SCREEN_SIZE.y);
     }
-    bindVertexBuffer(variable, buffer, data, size) {
+    runOverlayShader() {
+        this.gl.useProgram(this.overlayShaderProgram);
+        // Set attributes and uniforms
+        const screenBounds = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+        this.bindVertexBuffer(this.overlayShaderProgram, "aVertexPosition", this.vertexBuffer, screenBounds, 2);
+        let offset = this.cameraPosition.sub(this.previousCameraPosition);
+        this.previousCameraPosition = this.cameraPosition;
+        this.gl.uniform2f(this.gl.getUniformLocation(this.overlayShaderProgram, "uScreenSize"), SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2);
+        this.gl.uniform2f(this.gl.getUniformLocation(this.overlayShaderProgram, "uScreenPadding"), this.CANVAS_PADDING.x, this.CANVAS_PADDING.y);
+        this.gl.uniform2f(this.gl.getUniformLocation(this.overlayShaderProgram, "uTranslate"), offset.x, offset.y);
+        // Bind texture uniforms
+        this.bindTexture(this.overlayShaderProgram, "uOverlayTexture", 0, this.overlayTexture);
+        this.bindTexture(this.overlayShaderProgram, "uParticleTexture", 1, this.particleTexture);
+        // Draw to main framebuffer
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        this.gl.clearColor(0, 0, 0, 0);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.gl.blendFunc(this.gl.ONE, this.gl.ZERO);
+        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    }
+    bindVertexBuffer(program, variable, buffer, data, size) {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, data, this.gl.DYNAMIC_DRAW);
-        let pointer = this.gl.getAttribLocation(this.shaderProgram, variable);
+        let pointer = this.gl.getAttribLocation(program, variable);
         this.gl.vertexAttribPointer(pointer, size, this.gl.FLOAT, false, 0, 0);
         this.gl.enableVertexAttribArray(pointer);
     }
-    copyToTexture() {
-        this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.lastTexture);
-        this.gl.copyTexImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight, 0);
+    bindTexture(program, variable, index, texture) {
+        this.gl.activeTexture(this.gl.TEXTURE0 + index);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+        let pointer = this.gl.getUniformLocation(program, variable);
+        this.gl.uniform1i(pointer, index);
     }
-    applyFadeShader() {
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), this.gl.DYNAMIC_DRAW);
-        let vertexPositionPointer = this.gl.getAttribLocation(this.fadeShaderProgram, "aVertexPosition");
-        this.gl.vertexAttribPointer(vertexPositionPointer, 2, this.gl.FLOAT, false, 0, 0);
-        this.gl.enableVertexAttribArray(vertexPositionPointer);
-        this.gl.useProgram(this.fadeShaderProgram);
-        // Adjust for camera position
-        let offset = this.cameraPosition.sub(this.previousCameraPosition);
-        this.previousCameraPosition = this.cameraPosition;
-        this.gl.uniform2f(this.gl.getUniformLocation(this.fadeShaderProgram, "uScreenSize"), SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2);
-        this.gl.uniform2f(this.gl.getUniformLocation(this.fadeShaderProgram, "uScreenPadding"), this.CANVAS_PADDING.x, this.CANVAS_PADDING.y);
-        this.gl.uniform2f(this.gl.getUniformLocation(this.fadeShaderProgram, "uTranslate"), offset.x, offset.y);
-        //
-        {
-            this.gl.activeTexture(this.gl.TEXTURE0);
-            this.gl.bindTexture(this.gl.TEXTURE_2D, this.lastTexture);
-            let pointer = this.gl.getUniformLocation(this.fadeShaderProgram, "uTexture");
-            this.gl.uniform1i(pointer, 0);
-        }
-        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    copyToTexture() {
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        this.gl.activeTexture(this.gl.TEXTURE0);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.overlayTexture);
+        this.gl.copyTexImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight, 0);
     }
 }
 class FireworkExplosion {

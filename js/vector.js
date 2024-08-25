@@ -26,6 +26,7 @@ class Vector {
     }
     rotate90() { return new Vector(-this.y, this.x); }
     toArray() { return [this.x, this.y]; }
+    floor() { return new Vector(Math.floor(this.x), Math.floor(this.y)); }
     static dot(a, b) { return a.dot(b); }
     static cross(a, b) { return a.x * b.y - a.y * b.x; }
     static fromAngle(theta) { return new Vector(Math.cos(theta), Math.sin(theta)); }
