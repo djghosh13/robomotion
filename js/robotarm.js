@@ -13,14 +13,8 @@ class MouseController {
         return this.targetPosition;
     }
     update(game) {
-        let camera = game.getCamera();
-        if (camera != null) {
-            let offset = SCREEN_SIZE.div(2).sub(camera.position);
-            this.targetPosition = mousePosition.sub(offset);
-        }
-        else {
-            this.targetPosition = mousePosition;
-        }
+        let offset = game.getCameraOffset();
+        this.targetPosition = mousePosition.sub(offset);
     }
     render(ctx) { }
 }

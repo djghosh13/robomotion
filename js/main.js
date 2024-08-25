@@ -105,7 +105,7 @@ new FireworkFiller(new Vector(115, 175), FireworkElement.COPPER, 1.5, new Vector
 // Aesthetics
 new Light(new Vector(115, 50)), new Light(new Vector(445, 50)), new Light(new Vector(50, 565), 5), new CounterLight(new Vector(50, 415), 2), 
 // Firework manager
-new FireworkParticleManager(960, 720));
+new FireworkParticleManager());
 // Manually link up for now
 for (let i = 0; i < 3; i++) {
     game.components.push(new SimpleCircuit(game.searchComponents(Button)[i], game.searchComponents(Light)[i]));
@@ -116,37 +116,6 @@ var run = true;
 var mousePosition = new Vector(100, 100);
 var isMousePressed = false;
 var mouseJustPressed = false;
-function setup(ctx) {
-    ctx.lineWidth = 10;
-    ctx.lineJoin = "bevel";
-    ctx.strokeStyle = "white";
-    ctx.fillStyle = "white";
-    ctx.lineCap = "round";
-    background(ctx, "hsl(264, 30%, 5%)");
-}
-function background(ctx, color) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.closePath();
-    ctx.lineWidth = 1;
-    for (let x = 0; x < ctx.canvas.width; x += 10) {
-        ctx.strokeStyle = (x % 50 == 0) ? "#222" : "#111";
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, ctx.canvas.height);
-        ctx.closePath();
-        ctx.stroke();
-    }
-    for (let y = 0; y < ctx.canvas.height; y += 10) {
-        ctx.strokeStyle = (y % 50 == 0) ? "#222" : "#111";
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(ctx.canvas.width, y);
-        ctx.closePath();
-        ctx.stroke();
-    }
-}
 var spfHistory = Array(60).fill(FRAME_INTERVAL);
 var msptHistory = Array(60).fill(0);
 var averageSPF = FRAME_INTERVAL;
@@ -193,7 +162,8 @@ document.onreadystatechange = function (event) {
                 mousePosition = new Vector(event.offsetX, event.offsetY);
                 let debugCoords = document.querySelector("#mouse-coords");
                 if (debugCoords != null) {
-                    debugCoords.innerText = `(${mousePosition.x.toFixed(1)}, ${mousePosition.y.toFixed(1)})`;
+                    let mousePos = MouseController.instance.getTarget();
+                    debugCoords.innerText = `(${mousePos.x.toFixed(0)}, ${mousePos.y.toFixed(0)})`;
                 }
             });
             canvas.addEventListener("mousedown", event => {
@@ -212,13 +182,13 @@ document.onreadystatechange = function (event) {
             if (event.key.toLowerCase() == "f") {
                 let debug = document.querySelector("#debug-fps");
                 if (debug != null) {
-                    debug.style['display'] = (debug.style['display'] == "none") ? "initial" : "none";
+                    debug.style['display'] = (debug.style['display'] == "none") ? "block" : "none";
                 }
             }
             if (event.key.toLowerCase() == "c") {
                 let debug = document.querySelector("#debug-coords");
                 if (debug != null) {
-                    debug.style['display'] = (debug.style['display'] == "none") ? "initial" : "none";
+                    debug.style['display'] = (debug.style['display'] == "none") ? "block" : "none";
                 }
             }
         });
