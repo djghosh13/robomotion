@@ -28,8 +28,10 @@ class MouseController implements Controller {
 class RobotArm implements IComponent {
     renderOrder: number = 0;
     heldObject: IComponent & IGrabbable | null;
+    velocities: number[];
     constructor(public armature: BoneGraphics[], public controller: Controller | null = null) {
         this.heldObject = null;
+        this.velocities = new Array(armature.length).fill(0);
     }
     get grabber() {
         return this.armature[this.armature.length - 1];
@@ -55,6 +57,8 @@ class RobotArm implements IComponent {
                 this.heldObject = null;
             }
         }
+        // Save old positions
+        let oldPositions = this.armature.map(bone => bone.start.add(bone.end).div(2));
         // Get all colliders
         let anyColliders: Collider[] = [];
         let endColliders: Collider[] = [];
@@ -73,7 +77,7 @@ class RobotArm implements IComponent {
             desiredTarget = this.heldObject.adjustTarget(desiredTarget);
         }
         const MAX_ITER = 4;
-        let firstCollision: Collision | null = null;
+        let firstCollision: (Collision | null)[] = Array(this.armature.length).fill(null);
         for (let i = 0; i < MAX_ITER; i++) {
             let moments = computeMoI(this.armature);
             for (let j = 0; j < this.armature.length; j++) {
@@ -89,8 +93,8 @@ class RobotArm implements IComponent {
                 collisionCheck: for (let k = j; k < this.armature.length; k++) {
                     let colliders = (k == this.armature.length - 1) ? endColliders : anyColliders;
                     while (getCollision(this.armature[k], colliders) != null) {
-                        if (firstCollision == null) {
-                            firstCollision = getCollision(this.armature[k], colliders);
+                        if (firstCollision[j] == null) {
+                            firstCollision[j] = getCollision(this.armature[k], colliders);
                         }
                         fixes++;
                         desiredRotation /= 2;
@@ -125,8 +129,16 @@ class RobotArm implements IComponent {
                 }
             }
         }
-        if (firstCollision != null && Math.random() < 0.1) {
-            game.spawnObject(new Sparks(firstCollision.origin));
+        // Compute new velocities
+        const SPARKS_THRESHOLD = 100;
+        let boneDiffs = this.armature.map((bone, i) => bone.start.add(bone.end).div(2).sub(oldPositions[i]).norm);
+        for (let i = 0; i < this.velocities.length; i++) {
+            this.velocities[i] = 0.9 * this.velocities[i] + 0.1 * boneDiffs[i] * 1000 / FRAME_INTERVAL;
+            let collision = firstCollision[i];
+            if (collision != null && (this.velocities[i] > SPARKS_THRESHOLD || Math.random() < 0.2 * FRAME_INTERVAL / 1000)) {
+                game.spawnObject(new Sparks(collision.origin, this.velocities[i]));
+                this.velocities[i] = 0;
+            }
         }
     }
     render(ctx: CanvasRenderingContext2D) {

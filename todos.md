@@ -2,6 +2,5 @@
 
 ## Next steps
 
-1. Revamp firework trails
-2. Level editor
-3. Better sparks
+1. Level editor
+2. Better sparks

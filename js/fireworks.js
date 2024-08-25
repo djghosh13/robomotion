@@ -271,13 +271,13 @@ class FireworkTrail extends FireworkExplosion {
     }
 }
 class Sparks extends FireworkExplosion {
-    constructor(position) {
+    constructor(position, power = 0) {
         super(position, 0, []);
         this.position = position;
         this.lifetime = this.maxLifetime = 2;
         // Spawn particles
         let angle = Math.random() * TWO_PI;
-        let magnitude = 100 * (1 + (Math.random() - 0.5));
+        let magnitude = ((power == 0) ? 60 : 120) * (1 + 0.5 * (Math.random() - 0.5));
         this.particles.push({
             position: Vector.ZERO,
             z: -1,

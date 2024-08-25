@@ -62,7 +62,7 @@ class FireworkParticleManager implements IComponent {
     colorBuffer: WebGLBuffer;
     timeBuffer: WebGLBuffer;
     particleTexture: WebGLTexture;
-    particleFramebuffer: WebGLFramebuffer | null; // TODO: Remove null
+    particleFramebuffer: WebGLFramebuffer;
     overlayTexture: WebGLTexture;
     constructor() {
         this.explosions = [];
@@ -342,12 +342,12 @@ class FireworkTrail extends FireworkExplosion {
 
 
 class Sparks extends FireworkExplosion {
-    constructor(public position: Vector) {
+    constructor(public position: Vector, power: number = 0) {
         super(position, 0, []);
         this.lifetime = this.maxLifetime = 2;
         // Spawn particles
         let angle = Math.random() * TWO_PI;
-        let magnitude = 100 * (1 + (Math.random() - 0.5));
+        let magnitude = ((power == 0) ? 60 : 120) * (1 + 0.5 * (Math.random() - 0.5));
         this.particles.push({
             position: Vector.ZERO,
             z: -1,
