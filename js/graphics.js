@@ -31,14 +31,14 @@ class BoneGraphics extends BonePhysics {
         ctx.fill();
         ctx.stroke();
     }
-    renderGrabber(ctx) {
+    renderGrabber(ctx, isGrabbing) {
         const N_POINTS = 3;
         let along = this.end.sub(this.start);
         let ortho = along.rotate90().normalized().mul(this.width / 2);
         ctx.lineWidth = 2;
         ctx.strokeStyle = "#ccc";
         ctx.fillStyle = "#111";
-        let angle = isMousePressed ? 0.2 : 0.35;
+        let angle = isGrabbing ? 0.2 : 0.35;
         for (let dir of [-1, 1]) {
             let points = [];
             for (let i = 0; i <= N_POINTS; i++) {

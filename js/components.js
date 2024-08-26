@@ -82,7 +82,7 @@ class ChainPull {
         this.position = position;
         this.renderOrder = -150;
         this.held = false;
-        this.endPosition = this.position.add(new Vector(0, this.length));
+        this.endPosition = this.position.add(new Vector(0, length));
         this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(game) {

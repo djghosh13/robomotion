@@ -126,7 +126,7 @@ class ChainPull implements IComponent, IGrabbable, IOutputter {
     constructor(public position: Vector,
             { speed = 1, length = 80, maxLength = 160 }) {
         this.held = false;
-        this.endPosition = this.position.add(new Vector(0, this.length));
+        this.endPosition = this.position.add(new Vector(0, length));
         this.speed = speed, this.length = length, this.maxLength = maxLength;
     }
     update(this: ChainPull, game: Game) {
@@ -180,7 +180,7 @@ class ChainPull implements IComponent, IGrabbable, IOutputter {
         let fraction = (this.endPosition.sub(this.position).norm - this.length) / (this.maxLength - this.length);
         return Math.min(Math.max(fraction / 0.95, 0), 1);
     }
-    solveCatenary(n: number) {
+    private solveCatenary(n: number) {
         // From https://math.stackexchange.com/questions/3557767/how-to-construct-a-catenary-of-a-specified-length-through-two-specified-points
         const EPSILON = 1e-2;
         let nPos = this.position.mul(-1);

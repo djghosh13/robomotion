@@ -257,9 +257,6 @@ var LevelData;
                 this.components.set(name, new ComponentConstructor(type, data[name]));
             }
         }
-        updateParameter(name, parameter, value) {
-            // TODO
-        }
         constructLevel() {
             let builtComponents = new Map();
             for (let name of this.topologicalSort()) {
@@ -317,6 +314,112 @@ var LevelData;
         }
     }
     LevelData.Level = Level;
+    function dataToJSON(data) {
+        // Gather stats on properties
+        let propCounts = new Map();
+        let stringCounts = new Map();
+        function recursiveGather(obj) {
+            if (typeof obj == "string") {
+                if (!stringCounts.has(obj)) {
+                    stringCounts.set(obj, 0);
+                }
+                stringCounts.set(obj, stringCounts.get(obj) + 1);
+            }
+            else if (obj instanceof Array) {
+                for (let element of obj) {
+                    recursiveGather(element);
+                }
+            }
+            else if (obj instanceof Object) {
+                for (let prop in obj) {
+                    if (!propCounts.has(prop)) {
+                        propCounts.set(prop, 0);
+                    }
+                    propCounts.set(prop, propCounts.get(prop) + 1);
+                    recursiveGather(obj[prop]);
+                }
+            }
+        }
+        recursiveGather(data);
+        // Filter and sort
+        let propToShort = new Map();
+        let shortToProp = new Map();
+        let compressProps = [];
+        propCounts.forEach((count, prop) => {
+            shortToProp.set(prop, prop);
+            if (count > 1) {
+                compressProps.push(prop);
+            }
+        });
+        let stringToShort = new Map();
+        let shortToString = new Map();
+        let compressStrings = [];
+        stringCounts.forEach((count, string) => {
+            stringToShort.set(string, string);
+            if (count > 1) {
+                compressStrings.push(string);
+            }
+        });
+        compressProps.sort((prop1, prop2) => propCounts.get(prop2) - propCounts.get(prop1));
+        compressStrings.sort((string1, string2) => stringCounts.get(string2) - stringCounts.get(string1));
+        // Compute mapping
+        for (let prop of compressProps) {
+            for (let end = 1; end < prop.length; end++) {
+                let shortened = prop.substring(0, end);
+                if (!shortToProp.has(shortened)) {
+                    shortToProp.delete(prop);
+                    shortToProp.set(shortened, prop);
+                    propToShort.set(prop, shortened);
+                    break;
+                }
+            }
+        }
+        shortToProp.forEach((prop, short) => {
+            if (prop == short) {
+                shortToProp.delete(short);
+            }
+        });
+        for (let string of compressStrings) {
+            for (let end = 1; end < string.length; end++) {
+                let shortened = string.substring(0, end);
+                if (!shortToString.has(shortened)) {
+                    shortToString.delete(string);
+                    shortToString.set(shortened, string);
+                    stringToShort.set(string, shortened);
+                    break;
+                }
+            }
+        }
+        shortToString.forEach((string, short) => {
+            if (string == short) {
+                shortToString.delete(short);
+            }
+        });
+        // Compress
+        function recursiveCompress(obj) {
+            if (typeof obj == "string") {
+                return stringToShort.get(obj) || obj;
+            }
+            else if (obj instanceof Array) {
+                return obj.map(recursiveCompress);
+            }
+            else if (obj instanceof Object) {
+                let newObject = {};
+                for (let prop in obj) {
+                    let newProp = propToShort.get(prop) || prop;
+                    newObject[newProp] = recursiveCompress(obj[prop]);
+                }
+                return newObject;
+            }
+            return obj;
+        }
+        return {
+            props: Object.fromEntries(shortToProp),
+            strings: Object.fromEntries(shortToString),
+            data: recursiveCompress(data)
+        };
+    }
+    LevelData.dataToJSON = dataToJSON;
 })(LevelData || (LevelData = {}));
 const simple_level = {
     // Robot arm

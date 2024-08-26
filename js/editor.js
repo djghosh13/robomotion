@@ -1,11 +1,31 @@
-var game = new Game();
-game.spawnObject(MouseController.instance);
-game.spawnObject(new FireworkParticleManager());
-for (let component of new LevelData.Level(simple_level).constructLevel()) {
-    game.spawnObject(component);
+class LevelEditor extends Game {
+    constructor(data) {
+        super();
+        this.level = new LevelData.Level(data || {});
+        this.camera = SCREEN_SIZE.div(2);
+        this.mouseAnchor = null;
+        for (let component of this.level.constructLevel()) {
+            this.spawnObject(component);
+        }
+    }
+    update() {
+        if (MouseController.instance.justGrabbed()) {
+            this.mouseAnchor = MouseController.instance.getTarget();
+        }
+        if (MouseController.instance.isGrabbing() && this.mouseAnchor != null) {
+            this.camera = this.camera.add(this.mouseAnchor.sub(MouseController.instance.getTarget()));
+        }
+        else {
+            this.mouseAnchor = null;
+        }
+        MouseController.instance.update(this);
+        mouseJustPressed = false;
+    }
+    getCameraOffset() {
+        return SCREEN_SIZE.div(2).sub(this.camera).floor();
+    }
 }
-game.robotArms[0].controller = MouseController.instance;
-game.searchComponents(FireworkSpawner).forEach(spawner => spawner.input = 1);
+var editor = new LevelEditor(simple_level);
 var run = true;
 var mousePosition = new Vector(100, 100);
 var isMousePressed = false;
@@ -15,12 +35,12 @@ var msptHistory = Array(60).fill(0);
 var averageSPF = FRAME_INTERVAL;
 var averageMSPT = 0;
 var lastFrame = Date.now();
-function mainUpdate(ctx) {
+function editorUpdate(ctx) {
     if (!run)
         return;
     let startTime = Date.now();
-    game.update();
-    game.render();
+    editor.update();
+    editor.render();
     let endTime = Date.now();
     let spf = endTime - lastFrame;
     let mspt = endTime - startTime;
@@ -50,8 +70,8 @@ document.onreadystatechange = function (event) {
         let canvas = document.querySelector("#simulation");
         if (canvas instanceof HTMLCanvasElement) {
             let context = canvas.getContext("2d");
-            game.ctx = context;
-            window.setInterval(mainUpdate, FRAME_INTERVAL, context);
+            editor.ctx = context;
+            window.setInterval(editorUpdate, FRAME_INTERVAL, context);
             canvas.addEventListener("mousemove", event => {
                 mousePosition = new Vector(event.offsetX, event.offsetY);
                 let debugCoords = document.querySelector("#mouse-coords");
@@ -63,8 +83,6 @@ document.onreadystatechange = function (event) {
             canvas.addEventListener("mousedown", event => {
                 isMousePressed = true;
                 mouseJustPressed = true;
-                // DEBUG
-                game.spawnObject(new FireworkTrail(MouseController.instance.getTarget(), 280, new Array(3).fill(1 + (Math.floor(MouseController.instance.getTarget().x / 100) % 7 + 7) % 7)));
             });
             canvas.addEventListener("mouseup", event => {
                 isMousePressed = false;

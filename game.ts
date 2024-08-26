@@ -1,3 +1,6 @@
+const FRAME_INTERVAL = 16.7;
+const SCREEN_SIZE = new Vector(960, 720);
+
 class Game {
     public ctx: CanvasRenderingContext2D;
     public components: IComponent[];
@@ -57,7 +60,7 @@ class Game {
                 robotArm.heldObject.render(this.ctx);
             }
             // Draw grabber arm
-            robotArm.grabber.renderGrabber(this.ctx);
+            robotArm.grabber.renderGrabber(this.ctx, robotArm.controller?.isGrabbing() || false);
         }
         // Draw foreground (positive renderOrder)
         for (let i = postIndex; i < renderOrdering.length; i++) {

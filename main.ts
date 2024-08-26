@@ -1,32 +1,12 @@
-const FRAME_INTERVAL = 16.7;
-const SCREEN_SIZE = new Vector(960, 720);
-
-const ARMATURE_PRESETS = new Map<string, BoneGraphics[]>();
-ARMATURE_PRESETS.set("example_level", buildArmGraphics({
-    root: [ 280, 380 ],
-    bones: [
-        { length: 110, speed: 3, width: 30 },
-        { length: 80, speed: 5, width: 20 },
-        { length: 60, speed: 6, width: 20 },
-        { length: 45, speed: 5, width: 18 }
-    ]
-}));
-ARMATURE_PRESETS.set("example_secondary", buildArmGraphics({
-    root: [ 450, 500 ],
-    bones: [
-        { length: 80, speed: 3, width: 20 },
-        { length: 45, speed: 5, width: 18 }
-    ]
-}));
-
 var game = new Game();
 game.spawnObject(MouseController.instance);
 game.spawnObject(new FireworkParticleManager());
 for (let component of new LevelData.Level(simple_level).constructLevel()) {
     game.spawnObject(component);
 }
+
 game.robotArms[0].controller = MouseController.instance;
-// game.searchComponents<FireworkSpawner>(FireworkSpawner)[0].input = 1;
+game.searchComponents<FireworkSpawner>(FireworkSpawner).forEach(spawner => spawner.input = 1);
 
 
 var run = true;
@@ -41,7 +21,7 @@ var averageSPF = FRAME_INTERVAL;
 var averageMSPT = 0;
 var lastFrame = Date.now();
 
-function update(ctx: CanvasRenderingContext2D) {
+function mainUpdate(ctx: CanvasRenderingContext2D) {
     if (!run) return;
     let startTime = Date.now();
 
@@ -80,7 +60,7 @@ document.onreadystatechange = function(event) {
         if (canvas instanceof HTMLCanvasElement) {
             let context = canvas.getContext("2d");
             game.ctx = context!;
-            window.setInterval(update, FRAME_INTERVAL, context);
+            window.setInterval(mainUpdate, FRAME_INTERVAL, context);
             canvas.addEventListener("mousemove", event => {
                 mousePosition = new Vector(event.offsetX, event.offsetY);
                 let debugCoords: HTMLElement | null = document.querySelector("#mouse-coords");
