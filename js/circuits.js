@@ -34,18 +34,17 @@ class ActivatorCircuit {
 class AlwaysOn {
     constructor() {
         this.renderOrder = -1000;
-    }
-    update(game) {
         this.output = 1;
     }
+    update(game) { }
     render(ctx) { }
 }
 class Light {
-    constructor(position, hue = 134, on = false) {
+    constructor(position, { hue = 134 }) {
         this.position = position;
-        this.hue = hue;
-        this.on = on;
         this.renderOrder = -50;
+        this.on = false;
+        this.hue = hue;
     }
     update(game) { }
     render(ctx) {
@@ -72,11 +71,11 @@ class Light {
     }
 }
 class WireLight {
-    constructor(points, hue = 134, input = 0) {
+    constructor(points, { hue = 134 }) {
         this.points = points;
-        this.hue = hue;
-        this.input = input;
         this.renderOrder = -500;
+        this.input = 0;
+        this.hue = hue;
     }
     update(game) { }
     render(ctx) {
@@ -116,12 +115,12 @@ class WireLight {
     }
 }
 class CounterLight {
-    constructor(position, maxCount, hue = 134) {
+    constructor(position, maxCount, { hue = 134 }) {
         this.position = position;
         this.maxCount = maxCount;
-        this.hue = hue;
         this.renderOrder = -50;
         this.input = 0;
+        this.hue = hue;
     }
     update(game) { }
     render(ctx) {

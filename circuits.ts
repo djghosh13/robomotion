@@ -31,16 +31,22 @@ class ActivatorCircuit implements IComponent {
 class AlwaysOn implements IComponent, IOutputter {
     renderOrder: number = -1000;
     output: number;
-    update(game: Game) {
+    constructor() {
         this.output = 1;
     }
+    update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) { }
 }
 
 
 class Light implements IComponent, IInputter {
     renderOrder: number = -50;
-    constructor(public position: Vector, public hue: number = 134, public on: boolean = false) { }
+    on: boolean;
+    hue: number;
+    constructor(public position: Vector, { hue = 134 }) {
+        this.on = false;
+        this.hue = hue;
+    }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = 3;
@@ -68,7 +74,12 @@ class Light implements IComponent, IInputter {
 
 class WireLight implements IComponent, IInputter {
     renderOrder: number = -500;
-    constructor(public points: Vector[], public hue: number = 134, public input: number = 0) { }
+    input: number;
+    hue: number;
+    constructor(public points: Vector[], { hue = 134 }) {
+        this.input = 0;
+        this.hue = hue;
+    }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = 3;
@@ -110,8 +121,10 @@ class WireLight implements IComponent, IInputter {
 class CounterLight implements IComponent, IInputter {
     renderOrder: number = -50;
     input: number;
-    constructor(public position: Vector, public maxCount: number, public hue: number = 134) {
+    hue: number;
+    constructor(public position: Vector, public maxCount: number, { hue = 134 }) {
         this.input = 0;
+        this.hue = hue;
     }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {

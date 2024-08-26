@@ -2,5 +2,8 @@
 
 ## Next steps
 
-1. Level editor
-2. Better sparks
+1. Unified component parameter system [X]
+2. Serialized levels [X]
+3. Editor
+4. Serialized actions
+5. Networking

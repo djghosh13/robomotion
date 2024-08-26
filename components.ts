@@ -23,7 +23,10 @@ function iofIGrabbable(object: any): object is IGrabbable {
 
 class SimpleObstacle implements IComponent, ICollidable {
     renderOrder: number = -100;
-    constructor(public collider: Collider) { }
+    collider: Collider;
+    constructor(points: Vector[]) {
+        this.collider = new ConvexPolygonCollider(points);
+    }
     update(game: Game) { }
     render(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = 3;
@@ -222,11 +225,11 @@ class Lever implements IComponent, IGrabbable, IOutputter {
     length: number;
     maxRotation: number
     constructor(public position: Vector, facing: Vector,
-            { speed = 1, length = 80, maxRotation = Math.PI/3 }) {
+            { speed = 1, length = 80, maxRotation = 60 }) {
         this.facing = facing.normalized();
         this.held = false;
         this.rotation = -Math.PI / 3;
-        this.speed = speed, this.length = length, this.maxRotation = maxRotation;
+        this.speed = speed, this.length = length, this.maxRotation = maxRotation * Math.PI / 180;
     }
     update(this: Lever, game: Game) {
         let holders = game.heldBy(this);
@@ -283,13 +286,12 @@ class Lever implements IComponent, IGrabbable, IOutputter {
 
 class Carrier implements IComponent, IInputter {
     renderOrder: number = -400;
+    root: Bone;
     state: number;
     cooldown: number;
     speed: number;
-    constructor(public root: Bone, public positions: Vector[], { speed = 100 }) {
-        if (!(root instanceof Root)) {
-            throw new Error("Bone is not root!");
-        }
+    constructor(robotArm: RobotArm, public positions: Vector[], { speed = 100 }) {
+        this.root = robotArm.armature[0].parent!;
         this.position = this.positions[0];
         this.state = 0;
         this.cooldown = 0;

@@ -5,9 +5,9 @@ function iofIGrabbable(object) {
     return "handle" in object;
 }
 class SimpleObstacle {
-    constructor(collider) {
-        this.collider = collider;
+    constructor(points) {
         this.renderOrder = -100;
+        this.collider = new ConvexPolygonCollider(points);
     }
     update(game) { }
     render(ctx) {
@@ -174,13 +174,13 @@ class ChainPull {
     }
 }
 class Lever {
-    constructor(position, facing, { speed = 1, length = 80, maxRotation = Math.PI / 3 }) {
+    constructor(position, facing, { speed = 1, length = 80, maxRotation = 60 }) {
         this.position = position;
         this.renderOrder = -200;
         this.facing = facing.normalized();
         this.held = false;
         this.rotation = -Math.PI / 3;
-        this.speed = speed, this.length = length, this.maxRotation = maxRotation;
+        this.speed = speed, this.length = length, this.maxRotation = maxRotation * Math.PI / 180;
     }
     update(game) {
         let holders = game.heldBy(this);
@@ -234,13 +234,10 @@ class Lever {
     }
 }
 class Carrier {
-    constructor(root, positions, { speed = 100 }) {
-        this.root = root;
+    constructor(robotArm, positions, { speed = 100 }) {
         this.positions = positions;
         this.renderOrder = -400;
-        if (!(root instanceof Root)) {
-            throw new Error("Bone is not root!");
-        }
+        this.root = robotArm.armature[0].parent;
         this.position = this.positions[0];
         this.state = 0;
         this.cooldown = 0;
