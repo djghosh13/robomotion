@@ -85,7 +85,7 @@ namespace LevelData {
     }
 
     type ObjectFormat = Map<string, Data>;
-    const OBJECT_REGISTRY: Map<Function, ObjectFormat> = new Map<Function, ObjectFormat>([
+    export const OBJECT_REGISTRY: Map<Function, ObjectFormat> = new Map<Function, ObjectFormat>([
         // Obstacle
         [SimpleObstacle, new Map<string, Data>([
             ["points", new ArrayData(new PointData())],
@@ -179,7 +179,7 @@ namespace LevelData {
         ])],
     ]);
 
-    var TYPENAME_TO_TYPE: Map<string, Function> = new Map<string, Function>();
+    export var TYPENAME_TO_TYPE: Map<string, Function> = new Map<string, Function>();
     for (let key of OBJECT_REGISTRY.keys()) {
         TYPENAME_TO_TYPE.set(key.name, key);
     }
@@ -249,15 +249,29 @@ namespace LevelData {
             }
         }
         constructLevel(): IComponent[] {
+            let errors: Map<string, [string, any]> = new Map();
             let builtComponents: Map<string, IComponent> = new Map<string, IComponent>();
             for (let name of this.topologicalSort()) {
-                builtComponents.set(name, this.components.get(name)!.createComponent(builtComponents));
+                try {
+                    builtComponents.set(name, this.components.get(name)!.createComponent(builtComponents));
+                } catch (error) {
+                    errors.set(name, error);
+                }
             }
             let orderedComponents: IComponent[] = [];
             for (let name of this.components.keys()) {
-                orderedComponents.push(builtComponents.get(name)!);
+                if (builtComponents.has(name)) {
+                    orderedComponents.push(builtComponents.get(name)!);
+                }
             }
             return orderedComponents;
+        }
+        addComponent(type: Function, name: string, data: any) {
+            this.components.set(name, new ComponentConstructor(type, data));
+        }
+        updateComponent(name: string, data: any) {
+            let type = this.components.get(name)!.type;
+            this.components.set(name, new ComponentConstructor(type, data));
         }
         private topologicalSort(): string[] {
             // Get start nodes and dependencies
@@ -295,10 +309,10 @@ namespace LevelData {
                     }
                 });
             }
-            if (dependencies.size > 0) {
-                // Circular dependencies
-                throw ["circular", null];
-            }
+            // if (dependencies.size > 0) {
+            //     // Circular dependencies
+            //     throw ["circular", null];
+            // }
             return sortedComponents;
         }
     }

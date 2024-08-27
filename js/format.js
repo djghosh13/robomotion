@@ -97,7 +97,7 @@ var LevelData;
         POINT: new PointData(),
         VECTOR: new VectorData(),
     };
-    const OBJECT_REGISTRY = new Map([
+    LevelData.OBJECT_REGISTRY = new Map([
         // Obstacle
         [SimpleObstacle, new Map([
                 ["points", new ArrayData(new PointData())],
@@ -190,15 +190,15 @@ var LevelData;
                 ["armature", new BoneGraphicsData()],
             ])],
     ]);
-    var TYPENAME_TO_TYPE = new Map();
-    for (let key of OBJECT_REGISTRY.keys()) {
-        TYPENAME_TO_TYPE.set(key.name, key);
+    LevelData.TYPENAME_TO_TYPE = new Map();
+    for (let key of LevelData.OBJECT_REGISTRY.keys()) {
+        LevelData.TYPENAME_TO_TYPE.set(key.name, key);
     }
     class ComponentConstructor {
         constructor(type, data) {
             this.type = type;
             this.data = data;
-            this.specs = OBJECT_REGISTRY.get(type);
+            this.specs = LevelData.OBJECT_REGISTRY.get(type);
             this.references = new Set();
             this.specs.forEach((parser, parameter) => {
                 if (parameter.startsWith("*")) {
@@ -253,20 +253,35 @@ var LevelData;
             this.components = new Map();
             for (let name in data) {
                 let typeName = data[name]["type"];
-                let type = TYPENAME_TO_TYPE.get(typeName);
+                let type = LevelData.TYPENAME_TO_TYPE.get(typeName);
                 this.components.set(name, new ComponentConstructor(type, data[name]));
             }
         }
         constructLevel() {
+            let errors = new Map();
             let builtComponents = new Map();
             for (let name of this.topologicalSort()) {
-                builtComponents.set(name, this.components.get(name).createComponent(builtComponents));
+                try {
+                    builtComponents.set(name, this.components.get(name).createComponent(builtComponents));
+                }
+                catch (error) {
+                    errors.set(name, error);
+                }
             }
             let orderedComponents = [];
             for (let name of this.components.keys()) {
-                orderedComponents.push(builtComponents.get(name));
+                if (builtComponents.has(name)) {
+                    orderedComponents.push(builtComponents.get(name));
+                }
             }
             return orderedComponents;
+        }
+        addComponent(type, name, data) {
+            this.components.set(name, new ComponentConstructor(type, data));
+        }
+        updateComponent(name, data) {
+            let type = this.components.get(name).type;
+            this.components.set(name, new ComponentConstructor(type, data));
         }
         topologicalSort() {
             // Get start nodes and dependencies
@@ -306,10 +321,10 @@ var LevelData;
                     }
                 });
             }
-            if (dependencies.size > 0) {
-                // Circular dependencies
-                throw ["circular", null];
-            }
+            // if (dependencies.size > 0) {
+            //     // Circular dependencies
+            //     throw ["circular", null];
+            // }
             return sortedComponents;
         }
     }

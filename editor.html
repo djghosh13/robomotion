@@ -18,6 +18,91 @@
         <script type="text/javascript" src="js/crafting.js"></script>
         <script type="text/javascript" src="js/format.js"></script>
         <script type="text/javascript" src="js/editor.js"></script>
+        <style type="text/css">
+            #editor {
+                position: absolute;
+                right: 0;
+                top: 0;
+                height: 100%;
+                box-sizing: border-box;
+                background-color: hsl(264, 20%, 20%);;
+                color: #ccc;
+                font-family: monospace;
+                display: flex;
+                flex-direction: column;
+                border-left: 2px solid var(--border-color);
+
+                --border-color: #ccc;
+            }
+            #editor select, #editor button, #editor input[type=text] {
+                color: #efefef;
+                background-color: #222;
+                border: 1px solid var(--border-color);
+                font-family: inherit;
+                font-size: 0.9em;
+                padding: 0.2em 0.25em;
+            }
+            /* Add new component */
+            #editor #new-component {
+                font-size: 1.5em;
+                margin: 1em 0.8em;
+                flex: auto 0 0;
+            }
+            /* Edit single component */
+            #editor #component-editor {
+                flex: auto 0 0;
+            }
+            #editor #component-editor .component-entry {
+                display: none;
+            }
+            #editor #component-editor .component-entry.selected {
+                display: flex;
+                flex-direction: column;
+                border-top: 2px solid var(--border-color);
+                background-color: hsl(264, 10%, 25%);
+                padding: 1.5em 1em;
+            }
+            #editor #component-editor .component-entry .component-type {
+                color: #cfc;
+            }
+            #editor #component-editor label {
+                color: #ccc;
+                font-size: 1.2em;
+                margin: 0.1em 0;
+            }
+            #editor #component-editor input[type=text].invalid {
+                border-color: #f99;
+                color: #f99;
+            }
+            /* View list of components */
+            #editor #component-list {
+                flex: auto 1 1;
+                overflow-y: scroll;
+                border-top: 2px solid var(--border-color);
+            }
+            #editor #component-list .component {
+                display: flex;
+                flex-direction: row;
+                margin: 0.3em 0.5em;
+                padding: 0.5em 0.8em;
+                font-size: 1.1em;
+                color: #eee;
+                border-radius: 0.5em;
+                cursor: pointer;
+            }
+            #editor #component-list .component:hover {
+                background-color: #1119;
+            }
+            #editor #component-list .component label {
+                cursor: inherit;
+            }
+            #editor #component-list .component .component-type {
+                color: #cfc;
+                width: 6em;
+                margin-right: 1em;
+                text-align: right;
+            }
+        </style>
     </head>
     <body style="background-color: hsl(264, 30%, 8%);">
         <canvas id="simulation" width="960" height="720" style="cursor: default;"></canvas>
@@ -25,6 +110,13 @@
                 color: #ccc; pointer-events: none; user-select: none; display: none;">
             <span id="mouse-coords"></span>
         </div>
-        <div id="editor"></div>
+        <div id="editor">
+            <div id="new-component">
+                <select id="component-type"></select>
+                <button id="add-component">+ New</button>
+            </div>
+            <div id="component-editor"></div>
+            <div id="component-list"></div>
+        </div>
     </body>
 </html>
