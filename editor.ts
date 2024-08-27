@@ -14,16 +14,20 @@ class LevelEditor extends Game {
         }
     }
     override update() {
-        if (MouseController.instance.justGrabbed()) {
-            this.mouseAnchor = MouseController.instance.getTarget();
-        }
-        if (MouseController.instance.isGrabbing() && this.mouseAnchor != null) {
-            this.camera = this.camera.add(this.mouseAnchor.sub(MouseController.instance.getTarget()));
-        } else {
-            this.mouseAnchor = null;
-        }
+        this.searchComponents<RobotArm>(RobotArm).forEach(robotArm => robotArm.controller = MouseController.instance);
         MouseController.instance.update(this);
-        mouseJustPressed = false;
+        super.update();
+        return;
+        // if (MouseController.instance.justGrabbed()) {
+        //     this.mouseAnchor = MouseController.instance.getTarget();
+        // }
+        // if (MouseController.instance.isGrabbing() && this.mouseAnchor != null) {
+        //     this.camera = this.camera.add(this.mouseAnchor.sub(MouseController.instance.getTarget()));
+        // } else {
+        //     this.mouseAnchor = null;
+        // }
+        // MouseController.instance.update(this);
+        // mouseJustPressed = false;
     }
     override getCameraOffset(): Vector {
         return SCREEN_SIZE.div(2).sub(this.camera).floor();
@@ -245,9 +249,13 @@ document.onreadystatechange = function(event) {
                 }
             }
             if (event.key.toLowerCase() == "c") {
-                let debug: HTMLElement | null = document.querySelector("#debug-coords");
-                if (debug != null) {
-                    debug.style['display'] = (debug.style['display'] == "none") ? "block" : "none";
+                if (event.ctrlKey) {
+                    navigator.clipboard.writeText(editor.level.export());
+                } else {
+                    let debug: HTMLElement | null = document.querySelector("#debug-coords");
+                    if (debug != null) {
+                        debug.style['display'] = (debug.style['display'] == "none") ? "block" : "none";
+                    }
                 }
             }
         });

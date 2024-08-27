@@ -240,13 +240,19 @@ namespace LevelData {
 
     export class Level {
         components: Map<string, ComponentConstructor>;
-        constructor(data: any) {
+        constructor(public data: any) {
             this.components = new Map<string, ComponentConstructor>();
-            for (let name in data) {
-                let typeName: string = data[name]["type"];
+            for (let name in this.data) {
+                let typeName: string = this.data[name]["type"];
                 let type = TYPENAME_TO_TYPE.get(typeName)!;
-                this.components.set(name, new ComponentConstructor(type, data[name]));
+                this.components.set(name, new ComponentConstructor(type, this.data[name]));
             }
+        }
+        export(): string {
+            return JSON.stringify(dataToJSON(this.data));
+        }
+        static import(text: string): Level {
+            return new Level(JSONToData(JSON.parse(text)));
         }
         constructLevel(): IComponent[] {
             let errors: Map<string, [string, any]> = new Map();
@@ -267,10 +273,12 @@ namespace LevelData {
             return orderedComponents;
         }
         addComponent(type: Function, name: string, data: any) {
+            this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
         }
         updateComponent(name: string, data: any) {
             let type = this.components.get(name)!.type;
+            this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
         }
         private topologicalSort(): string[] {
@@ -317,7 +325,12 @@ namespace LevelData {
         }
     }
 
-    export function dataToJSON(data: any) {
+    type CompressedData = {
+        props: { [k: string]: string },
+        strings: { [k: string]: string },
+        data: any,
+    };
+    function dataToJSON(data: any): CompressedData {
         // Gather stats on properties
         let propCounts: Map<string, number> = new Map<string, number>();
         let stringCounts: Map<string, number> = new Map<string, number>();
@@ -417,6 +430,26 @@ namespace LevelData {
             strings: Object.fromEntries(shortToString),
             data: recursiveCompress(data)
         };
+    }
+    function JSONToData(json: CompressedData): any {
+        let propMap: Map<string, string> = new Map<string, string>(Object.entries(json.props));
+        let stringMap: Map<string, string> = new Map<string, string>(Object.entries(json.strings));
+        function recursiveDecompress(obj: any) {
+            if (typeof obj == "string") {
+                return stringMap.get(obj) || obj;
+            } else if (obj instanceof Array) {
+                return obj.map(recursiveDecompress);
+            } else if (obj instanceof Object) {
+                let newObject = {};
+                for (let prop in obj) {
+                    let newProp = propMap.get(prop) || prop;
+                    newObject[newProp] = recursiveDecompress(obj[prop]);
+                }
+                return newObject;
+            }
+            return obj;
+        }
+        return recursiveDecompress(json.data);
     }
 }
 

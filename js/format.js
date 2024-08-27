@@ -250,12 +250,19 @@ var LevelData;
     }
     class Level {
         constructor(data) {
+            this.data = data;
             this.components = new Map();
-            for (let name in data) {
-                let typeName = data[name]["type"];
+            for (let name in this.data) {
+                let typeName = this.data[name]["type"];
                 let type = LevelData.TYPENAME_TO_TYPE.get(typeName);
-                this.components.set(name, new ComponentConstructor(type, data[name]));
+                this.components.set(name, new ComponentConstructor(type, this.data[name]));
             }
+        }
+        export() {
+            return JSON.stringify(dataToJSON(this.data));
+        }
+        static import(text) {
+            return new Level(JSONToData(JSON.parse(text)));
         }
         constructLevel() {
             let errors = new Map();
@@ -277,10 +284,12 @@ var LevelData;
             return orderedComponents;
         }
         addComponent(type, name, data) {
+            this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
         }
         updateComponent(name, data) {
             let type = this.components.get(name).type;
+            this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
         }
         topologicalSort() {
@@ -434,7 +443,28 @@ var LevelData;
             data: recursiveCompress(data)
         };
     }
-    LevelData.dataToJSON = dataToJSON;
+    function JSONToData(json) {
+        let propMap = new Map(Object.entries(json.props));
+        let stringMap = new Map(Object.entries(json.strings));
+        function recursiveDecompress(obj) {
+            if (typeof obj == "string") {
+                return stringMap.get(obj) || obj;
+            }
+            else if (obj instanceof Array) {
+                return obj.map(recursiveDecompress);
+            }
+            else if (obj instanceof Object) {
+                let newObject = {};
+                for (let prop in obj) {
+                    let newProp = propMap.get(prop) || prop;
+                    newObject[newProp] = recursiveDecompress(obj[prop]);
+                }
+                return newObject;
+            }
+            return obj;
+        }
+        return recursiveDecompress(json.data);
+    }
 })(LevelData || (LevelData = {}));
 const simple_level = {
     // Robot arm
