@@ -137,16 +137,13 @@ class LevelEditor extends Game {
                 <label>Name <input type="text" name="name" value="${name}" /></label>
                 <button class="remove" title="Double-click to remove">Remove</button>
             `;
-            specs.forEach((parser, parameter) => {
-                if (parameter.startsWith("*")) {
-                    parameter = parameter.substring(1);
-                }
+            for (let [parameter, [parser]] of specs) {
                 let capitalized = parameter.charAt(0).toUpperCase() + parameter.substring(1);
                 let value = (data && parameter in data) ? JSON.stringify(data[parameter]) : "";
                 element.innerHTML += `
                 <label>${capitalized} <input type="text" name="${parameter}" value='${value}' /></label>
                 `;
-            });
+            }
             element.querySelector("button.remove")!.addEventListener("dblclick", () => {
                 thisEditor.removeComponent(name);
             });

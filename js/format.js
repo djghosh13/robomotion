@@ -100,94 +100,94 @@ var LevelData;
     LevelData.OBJECT_REGISTRY = new Map([
         // Obstacle
         [SimpleObstacle, new Map([
-                ["points", new ArrayData(new PointData())],
+                ["points", [new ArrayData(new PointData()), false]],
             ])],
         // Interactibles
         [Button, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["facing", PARAMETER_TYPE.VECTOR],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*width", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*depth", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*minDepth", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["facing", [PARAMETER_TYPE.VECTOR, false]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["width", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["depth", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["minDepth", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         [ChainPull, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*length", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*maxLength", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["length", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["maxLength", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         [Lever, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["facing", PARAMETER_TYPE.VECTOR],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*length", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*maxRotation", PARAMETER_TYPE.DEGREE_ANGLE],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["facing", [PARAMETER_TYPE.VECTOR, false]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["length", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["maxRotation", [PARAMETER_TYPE.DEGREE_ANGLE, true]],
             ])],
         // Lights
         [Light, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["*hue", PARAMETER_TYPE.DEGREE_ANGLE],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["hue", [PARAMETER_TYPE.DEGREE_ANGLE, true]],
             ])],
         [WireLight, new Map([
-                ["points", new ArrayData(PARAMETER_TYPE.POINT)],
-                ["*hue", PARAMETER_TYPE.DEGREE_ANGLE],
+                ["points", [new ArrayData(PARAMETER_TYPE.POINT), false]],
+                ["hue", [PARAMETER_TYPE.DEGREE_ANGLE, true]],
             ])],
         [CounterLight, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["maxCount", PARAMETER_TYPE.POSITIVE_INT],
-                ["*hue", PARAMETER_TYPE.DEGREE_ANGLE],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["maxCount", [PARAMETER_TYPE.POSITIVE_INT, false]],
+                ["hue", [PARAMETER_TYPE.DEGREE_ANGLE, true]],
             ])],
         // Firework related
         [FireworkSpawner, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["maxFireworks", PARAMETER_TYPE.POSITIVE_INT],
-                ["capacity", PARAMETER_TYPE.POSITIVE_INT],
-                ["elements", new ArrayData(new FireworkElementData())],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["maxFireworks", [PARAMETER_TYPE.POSITIVE_INT, false]],
+                ["capacity", [PARAMETER_TYPE.POSITIVE_INT, false]],
+                ["elements", [new ArrayData(new FireworkElementData()), false]],
             ])],
         [FireworkFiller, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["element", new FireworkElementData()],
-                ["time", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["topLeft", PARAMETER_TYPE.POINT],
-                ["bottomRight", PARAMETER_TYPE.POINT],
-                ["*radius", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["element", [new FireworkElementData(), false]],
+                ["time", [PARAMETER_TYPE.POSITIVE_FLOAT, false]],
+                ["topLeft", [PARAMETER_TYPE.POINT, false]],
+                ["bottomRight", [PARAMETER_TYPE.POINT, false]],
+                ["radius", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         [FireworkPreparer, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["*radius", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["radius", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         [FireworkLauncher, new Map([
-                ["position", PARAMETER_TYPE.POINT],
-                ["*radius", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["position", [PARAMETER_TYPE.POINT, false]],
+                ["radius", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         // Circuits
         [AlwaysOn, new Map([])],
         [SimpleCircuit, new Map([
-                ["activator", new ObjectData(iofIOutputter)],
-                ["responder", new ObjectData(iofIInputter)],
+                ["activator", [new ObjectData(iofIOutputter), false]],
+                ["responder", [new ObjectData(iofIInputter), false]],
             ])],
         [ActivatorCircuit, new Map([
-                ["activator", new ObjectData(iofIOutputter)],
-                ["responder", new ObjectData(iofIInputter)],
-                ["cooldown", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["activator", [new ObjectData(iofIOutputter), false]],
+                ["responder", [new ObjectData(iofIInputter), false]],
+                ["cooldown", [PARAMETER_TYPE.POSITIVE_FLOAT, false]],
             ])],
         // Robot arm
         [Carrier, new Map([
-                ["robotArm", new ObjectData(object => object instanceof RobotArm)],
-                ["positions", new ArrayData(PARAMETER_TYPE.POINT)],
-                ["*speed", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["robotArm", [new ObjectData(object => object instanceof RobotArm), false]],
+                ["positions", [new ArrayData(PARAMETER_TYPE.POINT), false]],
+                ["speed", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         [Camera, new Map([
-                ["target", new ObjectData(object => object instanceof RobotArm)],
-                ["*stiffness", PARAMETER_TYPE.POSITIVE_FLOAT],
-                ["*damping", PARAMETER_TYPE.POSITIVE_FLOAT],
+                ["target", [new ObjectData(object => object instanceof RobotArm), false]],
+                ["stiffness", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
+                ["damping", [PARAMETER_TYPE.POSITIVE_FLOAT, true]],
             ])],
         [RobotArm, new Map([
-                ["armature", new BoneGraphicsData()],
+                ["armature", [new BoneGraphicsData(), false]],
             ])],
     ]);
     LevelData.TYPENAME_TO_TYPE = new Map();
@@ -201,14 +201,11 @@ var LevelData;
             this.specs = LevelData.OBJECT_REGISTRY.get(type);
             this.references = new Set();
             this.cachedComponent = null;
-            this.specs.forEach((parser, parameter) => {
-                if (parameter.startsWith("*")) {
-                    parameter = parameter.substring(1);
-                }
+            for (let [parameter, [parser]] of this.specs) {
                 if (parser instanceof ObjectData) {
                     this.references.add(parameter);
                 }
-            });
+            }
         }
         getDependencies() {
             let dependencies = [];
@@ -226,11 +223,8 @@ var LevelData;
             let positionalArgs = [null];
             let keywordArgs = {};
             let hasKeywordArgs = false;
-            this.specs.forEach((parser, parameter) => {
-                let keyword = false;
-                if (parameter.startsWith("*")) {
-                    parameter = parameter.substring(1);
-                    keyword = true;
+            for (let [parameter, [parser, keyword]] of this.specs) {
+                if (keyword) {
                     hasKeywordArgs = true;
                 }
                 if (parameter in this.data) {
@@ -254,7 +248,7 @@ var LevelData;
                 else if (!keyword) {
                     throw ["missing", parameter, null];
                 }
-            });
+            }
             if (hasKeywordArgs) {
                 positionalArgs.push(keywordArgs);
             }
@@ -282,9 +276,6 @@ var LevelData;
                     type: component.type.name
                 };
                 for (let parameter of component.specs.keys()) {
-                    if (parameter.startsWith("*")) {
-                        parameter = parameter.substring(1);
-                    }
                     if (parameter in component.data) {
                         componentData[parameter] = component.data[parameter];
                     }
@@ -341,10 +332,7 @@ var LevelData;
                 this.dependentsGraph.set(newName, dependents);
                 for (let dependent of dependents) {
                     let component = this.components.get(dependent);
-                    for (let [parameter, parser] of component.specs) {
-                        if (parameter.startsWith("*")) {
-                            parameter = parameter.substring(1);
-                        }
+                    for (let [parameter, [parser]] of component.specs) {
                         if (parser instanceof ObjectData && parameter in component.data && component.data[parameter] == name) {
                             component.data[parameter] = newName;
                             updates.push([dependent, parameter]);
