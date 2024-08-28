@@ -5,9 +5,12 @@ class LevelEditor extends Game {
         this.camera = SCREEN_SIZE.div(2);
         this.mouseAnchor = null;
         this.playMode = false;
-        for (let component of this.level.constructLevel()[0]) {
-            this.spawnObject(component);
-        }
+        this.componentGroups = new Map();
+        this.componentListings = new Map();
+        this.componentEditorEntries = new Map();
+        // for (let component of this.level.constructLevel()[0]) {
+        //     this.spawnObject(component);
+        // }
     }
     update() {
         if (this.playMode) {
@@ -36,27 +39,38 @@ class LevelEditor extends Game {
         }
         return SCREEN_SIZE.div(2).sub(this.camera).floor();
     }
-    getComponentElement(name) {
-        return this.componentListElement.querySelector(`.component[data-name=${name}]`);
-    }
-    getComponentEditorElement(name) {
-        return this.componentEditorElement.querySelector(`.component-entry[data-name=${name}]`);
-    }
-    getAllComponentElements() {
-        let elements = new Map();
-        this.componentListElement.querySelectorAll(`.component[data-name]`).forEach(element => {
-            elements.set(element.getAttribute("data-name"), element);
+    getComponentGroup(typeName) {
+        if (this.componentGroups.has(typeName)) {
+            return this.componentGroups.get(typeName);
+        }
+        let element = document.createElement("div");
+        element.classList.add("component-group");
+        element.setAttribute("data-name", typeName);
+        element.innerHTML = `
+            <button class="group-heading">${typeName}</button>
+        `;
+        // Determine insertion order
+        let nextName = null;
+        for (let otherName of this.componentGroups.keys()) {
+            if (typeName < otherName && (nextName == null || otherName < nextName)) {
+                nextName = otherName;
+            }
+        }
+        if (nextName != null) {
+            this.componentListElement.insertBefore(element, this.componentGroups.get(nextName));
+        }
+        else {
+            this.componentListElement.append(element);
+        }
+        element.querySelector(".group-heading").addEventListener("click", () => {
+            element.classList.toggle("collapsed");
         });
-        return elements;
-    }
-    getAllComponentEditorElements() {
-        let elements = new Map();
-        this.componentEditorElement.querySelectorAll(`.component-entry[data-name]`).forEach(element => {
-            elements.set(element.getAttribute("data-name"), element);
-        });
-        return elements;
+        this.componentGroups.set(typeName, element);
+        return element;
     }
     refresh() {
+        // let fireworkManager = this.searchComponents<FireworkParticleManager>(FireworkParticleManager)[0]
+        //     || new FireworkParticleManager();
         // Simple refresh: TODO
         while (this.components.length > 0) {
             this.destroyObject(this.components[0]);
@@ -65,16 +79,15 @@ class LevelEditor extends Game {
         for (let component of components) {
             this.spawnObject(component);
         }
-        for (let [name, element] of this.getAllComponentElements()) {
+        // this.spawnObject(fireworkManager);
+        for (let [name, element] of this.componentListings) {
             let errored = errors.has(name);
             element.classList.toggle("invalid", errored);
-            let editorElement = this.getComponentEditorElement(name);
-            if (editorElement != null) {
-                editorElement.classList.toggle("invalid", errored);
-                if (errored) {
-                    let parameter = errors.get(name)[1];
-                    editorElement.querySelector(`input[name=${parameter}]`)?.classList.add("invalid");
-                }
+            let editorElement = this.componentEditorEntries.get(name);
+            editorElement.classList.toggle("invalid", errored);
+            if (errored) {
+                let parameter = errors.get(name)[1];
+                editorElement.querySelector(`input[name=${parameter}]`)?.classList.add("invalid");
             }
         }
     }
@@ -131,33 +144,51 @@ class LevelEditor extends Game {
                 thisEditor.removeComponent(name);
             });
             element.querySelectorAll("input[type=text]").forEach(input => {
-                if (input.getAttribute("name") != "name") {
+                if (input.getAttribute("name") == "name") {
+                    input.addEventListener("change", function () {
+                        thisEditor.renameComponent(name);
+                    });
+                }
+                else {
                     input.addEventListener("change", function () {
                         thisEditor.updateComponent(name);
                     });
                 }
             });
-            this.componentEditorElement.appendChild(element);
+            this.componentEditorElement.append(element);
+            this.componentEditorEntries.set(name, element);
         }
         // List element (type and name only)
         {
             let element = document.createElement("div");
             element.classList.add("component");
             element.setAttribute("data-name", name);
+            element.setAttribute("data-group", type.name);
             element.innerHTML = `
-                <label class="component-type">${shortTypeName(type.name)}</label> <label>${name}</label>
+                <label class="component-type">${shortTypeName(type.name)}</label>
+                <label class="component-name">${name}</label>
             `;
             element.addEventListener("click", function () {
                 thisEditor.clickComponent(this);
             });
-            this.componentListElement.appendChild(element);
-            element.scrollIntoView();
+            this.getComponentGroup(type.name).append(element);
+            this.componentListings.set(name, element);
+            this.selectComponent(name);
         }
         this.refresh();
     }
     removeComponent(name) {
-        this.getComponentEditorElement(name)?.remove();
-        this.getComponentElement(name)?.remove();
+        this.componentEditorEntries.get(name)?.remove();
+        this.componentEditorEntries.delete(name);
+        this.componentListings.get(name)?.remove();
+        this.componentListings.delete(name);
+        for (let [typeName, element] of this.componentGroups) {
+            // TODO: Less hacky
+            if (element.querySelectorAll(".component").length == 0) {
+                element.remove();
+                this.componentGroups.delete(typeName);
+            }
+        }
         this.level.removeComponent(name);
         this.refresh();
     }
@@ -168,12 +199,22 @@ class LevelEditor extends Game {
         }
     }
     selectComponent(name) {
-        for (let [elementName, element] of this.getAllComponentEditorElements()) {
-            element.classList.toggle("selected", elementName == name);
+        if (name != null) {
+            let listing = this.componentListings.get(name);
+            if (listing != null) {
+                let groupName = listing.getAttribute("data-group");
+                if (groupName != null) {
+                    this.componentGroups.get(groupName)?.classList.remove("collapsed");
+                }
+                listing.scrollIntoView({ block: "nearest" });
+            }
+        }
+        for (let [eName, element] of this.componentEditorEntries) {
+            element.classList.toggle("selected", eName == name);
         }
     }
     updateComponent(name) {
-        let element = this.getComponentEditorElement(name);
+        let element = this.componentEditorEntries.get(name);
         if (element != null) {
             // Read data object
             let data = {};
@@ -193,6 +234,44 @@ class LevelEditor extends Game {
             }
             // Update in level
             this.level.updateComponent(name, data);
+            this.refresh();
+        }
+    }
+    renameComponent(name) {
+        let element = this.componentEditorEntries.get(name);
+        if (element != null) {
+            let nameInput = element.querySelector("input[name=name]");
+            let newName = nameInput.value;
+            if (newName == name) {
+                nameInput.classList.remove("invalid");
+                return;
+            }
+            if (!newName || this.componentListings.has(newName)) {
+                nameInput.classList.add("invalid");
+                return;
+            }
+            nameInput.classList.remove("invalid");
+            // Update in level
+            let parameterUpdates = this.level.renameComponent(name, newName);
+            console.log(parameterUpdates);
+            // HTML updates
+            for (let [componentName, parameter] of parameterUpdates) {
+                let dependent = this.componentEditorEntries.get(componentName);
+                let parameterInput = dependent.querySelector(`input[name=${parameter}]`);
+                if (parameterInput != null) {
+                    parameterInput.value = `"${newName}"`;
+                }
+            }
+            let listing = this.componentListings.get(name);
+            listing.setAttribute("data-name", newName);
+            listing.querySelector(".component-name").innerHTML = newName;
+            let entry = this.componentEditorEntries.get(name);
+            entry.setAttribute("data-name", newName);
+            // Reference updates
+            this.componentListings.delete(name);
+            this.componentListings.set(newName, listing);
+            this.componentEditorEntries.delete(name);
+            this.componentEditorEntries.set(newName, entry);
             this.refresh();
         }
     }
@@ -266,11 +345,11 @@ document.onreadystatechange = function (event) {
         editor.componentEditorElement = document.querySelector("#editor #component-editor");
         {
             let typeSelector = document.querySelector("#editor #component-type");
-            for (let typeName of LevelData.TYPENAME_TO_TYPE.keys()) {
+            for (let typeName of Array.from(LevelData.TYPENAME_TO_TYPE.keys()).sort()) {
                 let element = document.createElement("option");
                 element.setAttribute("value", typeName);
                 element.innerText = typeName;
-                typeSelector.appendChild(element);
+                typeSelector.append(element);
             }
             let addComponentButton = document.querySelector("#editor #add-component");
             addComponentButton.addEventListener("click", () => {
@@ -280,10 +359,12 @@ document.onreadystatechange = function (event) {
         document.querySelector("#play-toggle")?.addEventListener("click", () => {
             editor.playMode = !editor.playMode;
         });
+        // TODO: Make level loading official
         for (let name in simple_level) {
             let type = LevelData.TYPENAME_TO_TYPE.get(simple_level[name]["type"]);
             editor.createComponent(type, name, simple_level[name]);
         }
+        editor.selectComponent();
         // Debug
         document.addEventListener("keydown", event => {
             if (event.key.toLowerCase() == "f") {

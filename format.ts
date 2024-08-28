@@ -189,9 +189,11 @@ namespace LevelData {
     class ComponentConstructor {
         specs: ObjectFormat;
         references: Set<string>;
+        cachedComponent: IComponent | null;
         constructor(public type: Function, public data: any) {
             this.specs = OBJECT_REGISTRY.get(type)!;
             this.references = new Set();
+            this.cachedComponent = null;
             this.specs.forEach((parser, parameter) => {
                 if (parameter.startsWith("*")) {
                     parameter = parameter.substring(1);
@@ -211,6 +213,9 @@ namespace LevelData {
             return dependencies;
         }
         createComponent(components: any): IComponent {
+            if (this.cachedComponent != null) {
+                return this.cachedComponent;
+            }
             let positionalArgs: any[] = [null];
             let keywordArgs: object = {};
             let hasKeywordArgs: boolean = false;
@@ -243,14 +248,21 @@ namespace LevelData {
                 positionalArgs.push(keywordArgs);
             }
             let constructor = this.type.bind.apply(this.type, positionalArgs);
-            return new constructor();
+            let component = new constructor();
+            this.cachedComponent = component;
+            return component;
         }
+        // positionHandles(): any[] {
+        //     let handles: any[] = [];
+        // }
     }
 
     export class Level {
         components: Map<string, ComponentConstructor>;
+        dependentsGraph: Map<string, Set<string>>;
         constructor(public data: any) {
             this.components = new Map<string, ComponentConstructor>();
+            this.dependentsGraph = new Map<string, Set<string>>();
             for (let name in this.data) {
                 let typeName: string = this.data[name]["type"];
                 let type = TYPENAME_TO_TYPE.get(typeName)!;
@@ -258,7 +270,22 @@ namespace LevelData {
             }
         }
         export(): string {
-            return JSON.stringify(dataToJSON(this.data));
+            let data: any = {};
+            this.components.forEach((component, name) => {
+                let componentData: any = {
+                    type: component.type.name
+                };
+                for (let parameter of component.specs.keys()) {
+                    if (parameter.startsWith("*")) {
+                        parameter = parameter.substring(1);
+                    }
+                    if (parameter in component.data) {
+                        componentData[parameter] = component.data[parameter];
+                    }
+                }
+                data[name] = componentData;
+            });
+            return JSON.stringify(dataToJSON(data));
         }
         static import(text: string): Level {
             return new Level(JSONToData(JSON.parse(text)));
@@ -284,15 +311,66 @@ namespace LevelData {
         addComponent(type: Function, name: string, data: any) {
             this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
+            this.recomputeDependents();
         }
         updateComponent(name: string, data: any) {
+            this.propagateUpdates(name);
             let type = this.components.get(name)!.type;
             this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
+            this.recomputeDependents();
         }
         removeComponent(name: string) {
+            this.propagateUpdates(name);
             delete this.data[name];
             this.components.delete(name);
+            this.recomputeDependents();
+        }
+        renameComponent(name: string, newName: string): [string, string][] {
+            let updates: [string, string][] = [];
+            if (this.dependentsGraph.has(name)) {
+                let dependents = this.dependentsGraph.get(name)!;
+                this.dependentsGraph.delete(name);
+                this.dependentsGraph.set(newName, dependents);
+                for (let dependent of dependents) {
+                    let component = this.components.get(dependent)!;
+                    for (let [parameter, parser] of component.specs) {
+                        if (parameter.startsWith("*")) {
+                            parameter = parameter.substring(1);
+                        }
+                        if (parser instanceof ObjectData && parameter in component.data && component.data[parameter] == name) {
+                            component.data[parameter] = newName;
+                            updates.push([dependent, parameter]);
+                        }
+                    }
+                }
+            }
+            return updates;
+        }
+        // Graph and update algorithms
+        private recomputeDependents() {
+            this.dependentsGraph.clear();
+            for (let [name, component] of this.components) {
+                for (let dependency of component.getDependencies()) {
+                    if (!this.dependentsGraph.has(dependency)) {
+                        this.dependentsGraph.set(dependency, new Set<string>());
+                    }
+                    this.dependentsGraph.get(dependency)!.add(name);
+                }
+            }
+        }
+        private propagateUpdates(name: string) {
+            let nodeQueue: string[] = [name];
+            while (nodeQueue.length > 0) {
+                let node = nodeQueue.shift()!;
+                let component = this.components.get(node);
+                if (component != null) {
+                    if (component.cachedComponent != null && this.dependentsGraph.has(node)) {
+                        this.dependentsGraph.get(node)!.forEach(dependent => nodeQueue.push(dependent));
+                    }
+                    component.cachedComponent = null;
+                }
+            }
         }
         private topologicalSort(): string[] {
             // Get start nodes and dependencies
@@ -446,7 +524,7 @@ namespace LevelData {
             data: recursiveCompress(data)
         };
     }
-    function JSONToData(json: CompressedData): any {
+    export function JSONToData(json: CompressedData): any {
         let propMap: Map<string, string> = new Map<string, string>(Object.entries(json.props));
         let stringMap: Map<string, string> = new Map<string, string>(Object.entries(json.strings));
         function recursiveDecompress(obj: any) {

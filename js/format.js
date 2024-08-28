@@ -200,6 +200,7 @@ var LevelData;
             this.data = data;
             this.specs = LevelData.OBJECT_REGISTRY.get(type);
             this.references = new Set();
+            this.cachedComponent = null;
             this.specs.forEach((parser, parameter) => {
                 if (parameter.startsWith("*")) {
                     parameter = parameter.substring(1);
@@ -219,6 +220,9 @@ var LevelData;
             return dependencies;
         }
         createComponent(components) {
+            if (this.cachedComponent != null) {
+                return this.cachedComponent;
+            }
             let positionalArgs = [null];
             let keywordArgs = {};
             let hasKeywordArgs = false;
@@ -255,13 +259,16 @@ var LevelData;
                 positionalArgs.push(keywordArgs);
             }
             let constructor = this.type.bind.apply(this.type, positionalArgs);
-            return new constructor();
+            let component = new constructor();
+            this.cachedComponent = component;
+            return component;
         }
     }
     class Level {
         constructor(data) {
             this.data = data;
             this.components = new Map();
+            this.dependentsGraph = new Map();
             for (let name in this.data) {
                 let typeName = this.data[name]["type"];
                 let type = LevelData.TYPENAME_TO_TYPE.get(typeName);
@@ -269,7 +276,22 @@ var LevelData;
             }
         }
         export() {
-            return JSON.stringify(dataToJSON(this.data));
+            let data = {};
+            this.components.forEach((component, name) => {
+                let componentData = {
+                    type: component.type.name
+                };
+                for (let parameter of component.specs.keys()) {
+                    if (parameter.startsWith("*")) {
+                        parameter = parameter.substring(1);
+                    }
+                    if (parameter in component.data) {
+                        componentData[parameter] = component.data[parameter];
+                    }
+                }
+                data[name] = componentData;
+            });
+            return JSON.stringify(dataToJSON(data));
         }
         static import(text) {
             return new Level(JSONToData(JSON.parse(text)));
@@ -296,15 +318,66 @@ var LevelData;
         addComponent(type, name, data) {
             this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
+            this.recomputeDependents();
         }
         updateComponent(name, data) {
+            this.propagateUpdates(name);
             let type = this.components.get(name).type;
             this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
+            this.recomputeDependents();
         }
         removeComponent(name) {
+            this.propagateUpdates(name);
             delete this.data[name];
             this.components.delete(name);
+            this.recomputeDependents();
+        }
+        renameComponent(name, newName) {
+            let updates = [];
+            if (this.dependentsGraph.has(name)) {
+                let dependents = this.dependentsGraph.get(name);
+                this.dependentsGraph.delete(name);
+                this.dependentsGraph.set(newName, dependents);
+                for (let dependent of dependents) {
+                    let component = this.components.get(dependent);
+                    for (let [parameter, parser] of component.specs) {
+                        if (parameter.startsWith("*")) {
+                            parameter = parameter.substring(1);
+                        }
+                        if (parser instanceof ObjectData && parameter in component.data && component.data[parameter] == name) {
+                            component.data[parameter] = newName;
+                            updates.push([dependent, parameter]);
+                        }
+                    }
+                }
+            }
+            return updates;
+        }
+        // Graph and update algorithms
+        recomputeDependents() {
+            this.dependentsGraph.clear();
+            for (let [name, component] of this.components) {
+                for (let dependency of component.getDependencies()) {
+                    if (!this.dependentsGraph.has(dependency)) {
+                        this.dependentsGraph.set(dependency, new Set());
+                    }
+                    this.dependentsGraph.get(dependency).add(name);
+                }
+            }
+        }
+        propagateUpdates(name) {
+            let nodeQueue = [name];
+            while (nodeQueue.length > 0) {
+                let node = nodeQueue.shift();
+                let component = this.components.get(node);
+                if (component != null) {
+                    if (component.cachedComponent != null && this.dependentsGraph.has(node)) {
+                        this.dependentsGraph.get(node).forEach(dependent => nodeQueue.push(dependent));
+                    }
+                    component.cachedComponent = null;
+                }
+            }
         }
         topologicalSort() {
             // Get start nodes and dependencies
@@ -480,6 +553,7 @@ var LevelData;
         }
         return recursiveDecompress(json.data);
     }
+    LevelData.JSONToData = JSONToData;
 })(LevelData || (LevelData = {}));
 const simple_level = {
     // Robot arm
