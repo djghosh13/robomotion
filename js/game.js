@@ -50,7 +50,7 @@ class Game {
                 robotArm.heldObject.render(this.ctx);
             }
             // Draw grabber arm
-            robotArm.grabber.renderGrabber(this.ctx, robotArm.controller?.isGrabbing() || false);
+            robotArm.grabber.renderGrabber(this.ctx, robotArm.isGrabbing);
         }
         // Draw foreground (positive renderOrder)
         for (let i = postIndex; i < renderOrdering.length; i++) {

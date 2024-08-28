@@ -1,7 +1,7 @@
 var game = new Game();
 game.spawnObject(MouseController.instance);
 game.spawnObject(new FireworkParticleManager());
-for (let component of new LevelData.Level(simple_level).constructLevel()) {
+for (let component of new LevelData.Level(simple_level).constructLevel()[0]) {
     game.spawnObject(component);
 }
 

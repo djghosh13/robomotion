@@ -28,9 +28,11 @@ class MouseController implements Controller {
 class RobotArm implements IComponent {
     renderOrder: number = 0;
     heldObject: IComponent & IGrabbable | null;
+    isGrabbing: boolean;
     velocities: number[];
     constructor(public armature: BoneGraphics[], public controller: Controller | null = null) {
         this.heldObject = null;
+        this.isGrabbing = false;
         this.velocities = new Array(armature.length).fill(0);
     }
     get grabber() {
@@ -38,6 +40,7 @@ class RobotArm implements IComponent {
     }
     update(game: Game) {
         // Grab or release objects
+        this.isGrabbing = this.controller?.isGrabbing() || false;
         if (this.controller == null || !this.controller.isGrabbing()) {
             this.heldObject = null;
         } else if (this.controller.justGrabbed()) {

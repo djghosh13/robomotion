@@ -25,6 +25,7 @@ class RobotArm {
         this.controller = controller;
         this.renderOrder = 0;
         this.heldObject = null;
+        this.isGrabbing = false;
         this.velocities = new Array(armature.length).fill(0);
     }
     get grabber() {
@@ -32,6 +33,7 @@ class RobotArm {
     }
     update(game) {
         // Grab or release objects
+        this.isGrabbing = this.controller?.isGrabbing() || false;
         if (this.controller == null || !this.controller.isGrabbing()) {
             this.heldObject = null;
         }

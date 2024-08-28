@@ -65,7 +65,7 @@ var LevelData;
         parse(data, components) {
             let index = data;
             let object = components.get(index);
-            if (this.typeCheck == null || this.typeCheck(object)) {
+            if (object != null && (this.typeCheck == null || this.typeCheck(object))) {
                 return object;
             }
             throw ["invalid", data];
@@ -230,15 +230,25 @@ var LevelData;
                     hasKeywordArgs = true;
                 }
                 if (parameter in this.data) {
-                    if (keyword) {
-                        keywordArgs[parameter] = parser.parse(this.data[parameter], components);
+                    try {
+                        if (keyword) {
+                            keywordArgs[parameter] = parser.parse(this.data[parameter], components);
+                        }
+                        else {
+                            positionalArgs.push(parser.parse(this.data[parameter], components));
+                        }
                     }
-                    else {
-                        positionalArgs.push(parser.parse(this.data[parameter], components));
+                    catch (err) {
+                        if (err instanceof Array && err.length == 2 && typeof err[0] == "string") {
+                            throw [err[0], parameter, err[1]];
+                        }
+                        else {
+                            throw err;
+                        }
                     }
                 }
                 else if (!keyword) {
-                    throw ["missing", parameter];
+                    throw ["missing", parameter, null];
                 }
             });
             if (hasKeywordArgs) {
@@ -281,7 +291,7 @@ var LevelData;
                     orderedComponents.push(builtComponents.get(name));
                 }
             }
-            return orderedComponents;
+            return [orderedComponents, errors];
         }
         addComponent(type, name, data) {
             this.data[name] = data;
@@ -292,28 +302,33 @@ var LevelData;
             this.data[name] = data;
             this.components.set(name, new ComponentConstructor(type, data));
         }
+        removeComponent(name) {
+            delete this.data[name];
+            this.components.delete(name);
+        }
         topologicalSort() {
             // Get start nodes and dependencies
             let nodeQueue = [];
-            let dependents = new Map();
-            let dependencies = new Map();
+            let outputs = new Map();
+            let inputs = new Map();
             this.components.forEach((component, name) => {
-                if (component.references.size == 0) {
+                let dependencies = component.getDependencies().filter(depName => this.components.has(depName));
+                if (dependencies.length == 0) {
                     nodeQueue.push(name);
                 }
                 else {
-                    dependencies.set(name, new Set(component.getDependencies()));
+                    inputs.set(name, new Set(dependencies));
                 }
-                dependents.set(name, new Set());
+                outputs.set(name, new Set());
             });
-            dependencies.forEach((deps, name) => {
+            inputs.forEach((deps, name) => {
                 deps.forEach(dep => {
-                    if (dependents.has(dep)) {
-                        dependents.get(dep).add(name);
+                    if (outputs.has(dep)) {
+                        outputs.get(dep).add(name);
                     }
-                    else {
-                        throw ["reference", dep];
-                    }
+                    // else {
+                    //     throw ["reference", dep];
+                    // }
                 });
             });
             // Kahn's algorithm
@@ -321,12 +336,12 @@ var LevelData;
             while (nodeQueue.length > 0) {
                 let node = nodeQueue.shift();
                 sortedComponents.push(node);
-                dependents.get(node).forEach(dependent => {
-                    let remainingDeps = dependencies.get(dependent);
+                outputs.get(node).forEach(dependent => {
+                    let remainingDeps = inputs.get(dependent);
                     remainingDeps.delete(node);
                     if (remainingDeps.size == 0) {
                         nodeQueue.push(dependent);
-                        dependencies.delete(dependent);
+                        inputs.delete(dependent);
                     }
                 });
             }

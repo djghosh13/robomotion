@@ -25,14 +25,18 @@
                 top: 0;
                 height: 100%;
                 box-sizing: border-box;
-                background-color: hsl(264, 20%, 20%);;
-                color: #ccc;
+                background-color: var(--editor-bg-color);
+                color: var(--editor-color);
                 font-family: monospace;
                 display: flex;
                 flex-direction: column;
                 border-left: 2px solid var(--border-color);
+                border-right: 2px solid var(--border-color);
 
+                --editor-bg-color: hsl(264, 20%, 20%);
+                --editor-color: #ccc;
                 --border-color: #ccc;
+                --invalid-color: #f99;
             }
             #editor select, #editor button, #editor input[type=text] {
                 color: #efefef;
@@ -54,17 +58,24 @@
             }
             #editor #component-editor .component-entry {
                 display: none;
-            }
-            #editor #component-editor .component-entry.selected {
-                display: flex;
+                position: relative;
                 flex-direction: column;
                 border-top: 2px solid var(--border-color);
                 background-color: hsl(264, 10%, 25%);
                 padding: 1.5em 1em;
             }
+            #editor #component-editor .component-entry.selected {
+                display: flex;
+            }
             #editor #component-editor .component-entry .component-type {
                 color: #cfc;
                 font-weight: bold;
+            }
+            #editor #component-editor .component-entry.invalid {
+                background-color: hsl(350, 20%, 25%);
+            }
+            #editor #component-editor .component-entry.invalid .component-type {
+                color: var(--invalid-color);
             }
             #editor #component-editor label {
                 color: #ccc;
@@ -72,8 +83,16 @@
                 margin: 0.1em 0;
             }
             #editor #component-editor input[type=text].invalid {
-                border-color: #f99;
-                color: #f99;
+                border-color: var(--invalid-color);
+                color: var(--invalid-color);
+            }
+            #editor #component-editor .component-entry .remove {
+                position: absolute;
+                top: 0;
+                right: 0;
+                font-size: 1.1em;
+                color: #c66;
+                border-width: 0 0 1px 1px;
             }
             /* View list of components */
             #editor #component-list {
@@ -87,12 +106,14 @@
                 margin: 0.3em 0.5em;
                 padding: 0.5em 0.8em;
                 font-size: 1.1em;
-                color: #eee;
+                color: #ddd;
                 border-radius: 0.5em;
                 cursor: pointer;
             }
             #editor #component-list .component:hover {
                 background-color: #1119;
+                font-weight: bold;
+                color: #fff;
             }
             #editor #component-list .component label {
                 cursor: inherit;
@@ -102,6 +123,19 @@
                 width: 6em;
                 margin-right: 1em;
                 text-align: right;
+            }
+            #editor #component-list .component.invalid .component-type {
+                color: var(--invalid-color);
+            }
+            /* Control panel */
+            #controls {
+                position: absolute;
+                bottom: 0;
+                left: calc(50% - 10em);
+                width: 20em;
+                box-sizing: border-box;
+                color: var(--editor-color);
+                background-color: var(--editor-bg-color);
             }
         </style>
     </head>
@@ -118,6 +152,9 @@
             </div>
             <div id="component-editor"></div>
             <div id="component-list"></div>
+        </div>
+        <div id="controls">
+            <button id="play-toggle">Play/Pause</button>
         </div>
     </body>
 </html>
