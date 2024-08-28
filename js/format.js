@@ -200,10 +200,17 @@ var LevelData;
             this.data = data;
             this.specs = LevelData.OBJECT_REGISTRY.get(type);
             this.references = new Set();
+            this.handles = new Set();
             this.cachedComponent = null;
             for (let [parameter, [parser]] of this.specs) {
                 if (parser instanceof ObjectData) {
                     this.references.add(parameter);
+                }
+                else if (parser instanceof PointData) {
+                    this.handles.add(parameter);
+                }
+                else if (parser instanceof ArrayData && parser.item instanceof PointData) {
+                    this.handles.add(parameter);
                 }
             }
         }
@@ -256,6 +263,26 @@ var LevelData;
             let component = new constructor();
             this.cachedComponent = component;
             return component;
+        }
+        getHandles() {
+            if (this.cachedComponent == null) {
+                return new Map();
+            }
+            let handleValues = new Map();
+            for (let parameter of this.handles) {
+                if (parameter in this.data) {
+                    let parser = this.specs.get(parameter)[0];
+                    if (parser instanceof PointData) {
+                        handleValues.set([parameter, -1], parser.parse(this.data[parameter]));
+                    }
+                    else if (parser instanceof ArrayData && parser.item instanceof PointData) {
+                        parser.parse(this.data[parameter], new Map()).forEach((value, index) => {
+                            handleValues.set([parameter, index], value);
+                        });
+                    }
+                }
+            }
+            return handleValues;
         }
     }
     class Level {

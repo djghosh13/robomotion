@@ -2,6 +2,7 @@ class LevelEditor extends Game {
     level: LevelData.Level;
     camera: Vector;
     mouseAnchor: Vector | null;
+    grabbedHandle: [string, string, number] | null;
     playMode: boolean;
     componentListElement: Element;
     componentEditorElement: Element;
@@ -29,15 +30,67 @@ class LevelEditor extends Game {
             return;
         } else {
             if (MouseController.instance.justGrabbed()) {
-                this.mouseAnchor = MouseController.instance.getTarget();
+                this.grabbedHandle = this.closestHandle();
+                if (this.grabbedHandle != null) {
+                    this.selectComponent(this.grabbedHandle[0]);
+                } else {
+                    this.mouseAnchor = MouseController.instance.getTarget();
+                }
             }
-            if (MouseController.instance.isGrabbing() && this.mouseAnchor != null) {
-                this.camera = this.camera.add(this.mouseAnchor.sub(MouseController.instance.getTarget()));
+            if (MouseController.instance.isGrabbing()) {
+                if (this.grabbedHandle != null) {
+                    let [name, parameter, index] = this.grabbedHandle;
+                    let pointerPos = MouseController.instance.getTarget();
+                    let newValue = [Math.round(pointerPos.x / 5) * 5, Math.round(pointerPos.y / 5) * 5];
+                    let entry = this.componentEditorEntries.get(name);
+                    if (entry != null) {
+                        let inputElement: HTMLInputElement | null = entry.querySelector(`input[name=${parameter}]`);
+                        if (inputElement != null) {
+                            if (index == -1) {
+                                // Single point
+                                inputElement.value = JSON.stringify(newValue);
+                            } else {
+                                // Array of points
+                                let array = Array.from(this.level.components.get(name)!.data[parameter]);
+                                array[index] = newValue;
+                                inputElement.value = JSON.stringify(array);
+                            }
+                        }
+                        this.updateComponent(name);
+                    } else {
+                        this.grabbedHandle = null;
+                    }
+                } else if (this.mouseAnchor != null) {
+                    this.camera = this.camera.add(this.mouseAnchor.sub(MouseController.instance.getTarget()));
+                }
             } else {
+                this.grabbedHandle = null;
                 this.mouseAnchor = null;
             }
             MouseController.instance.update(this);
             mouseJustPressed = false;
+        }
+    }
+    override render() {
+        super.render();
+        if (this.playMode) {
+            return;
+        }
+        // Draw handles
+        for (let [name, component] of this.level.components) {
+            for (let [[parameter, index], value] of component.getHandles()) {
+                let position = value.add(this.getCameraOffset());
+                let held = this.grabbedHandle != null && this.grabbedHandle[0] == name
+                    && this.grabbedHandle[1] == parameter && this.grabbedHandle[2] == index;
+                this.ctx.strokeStyle = held ? "#93fc" : "#306c";
+                this.ctx.fillStyle = held ? "c9f9" : "#93f6";
+                this.ctx.lineWidth = held ? 3 : 2;
+                this.ctx.beginPath();
+                this.ctx.arc(position.x, position.y, held ? 6 : 5, 0, TWO_PI);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
         }
     }
     override getCameraOffset(): Vector {
@@ -45,6 +98,25 @@ class LevelEditor extends Game {
             return super.getCameraOffset();
         }
         return SCREEN_SIZE.div(2).sub(this.camera).floor();
+    }
+
+    closestHandle(): [string, string, number] | null {
+        const THRESHOLD = 10;
+        let closestHandle: [string, string, number] | null = null;
+        let closestDistance = Number.POSITIVE_INFINITY;
+        for (let [name, component] of this.level.components) {
+            for (let [[parameter, index], value] of component.getHandles()) {
+                let distance = value.sub(MouseController.instance.getTarget()).norm;
+                if (distance < closestDistance) {
+                    closestHandle = [name, parameter, index];
+                    closestDistance = distance;
+                }
+            }
+        }
+        if (closestHandle != null && closestDistance < THRESHOLD) {
+            return closestHandle;
+        }
+        return null;
     }
 
     getComponentGroup(typeName: string): Element {
@@ -338,7 +410,7 @@ document.onreadystatechange = function(event) {
                 let debugCoords: HTMLElement | null = document.querySelector("#mouse-coords");
                 if (debugCoords != null) {
                     let mousePos = MouseController.instance.getTarget();
-                    debugCoords.innerText = `(${mousePos.x.toFixed(0)}, ${mousePos.y.toFixed(0)})`;
+                    debugCoords.innerText = `(${Math.round(mousePos.x / 5) * 5}, ${Math.round(mousePos.y / 5) * 5})`;
                 }
             });
             canvas.addEventListener("mousedown", event => {

@@ -137,6 +137,13 @@
     left: calc(50% - 10em);
     width: 20em;
     box-sizing: border-box;
-    color: var(--editor-color);
-    background-color: var(--editor-bg-color);
+    font-family: monospace;
+}
+#controls button {
+    color: #efefef;
+    background-color: #222;
+    border: 2px solid #ccc;
+    font-family: inherit;
+    font-size: 1.5em;
+    padding: 1em 1em;
 }
