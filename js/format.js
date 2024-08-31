@@ -367,6 +367,14 @@ var LevelData;
                     }
                 }
             }
+            let component = this.components.get(name);
+            if (component != null) {
+                this.components.delete(name);
+                this.components.set(newName, component);
+            }
+            let data = this.data[name];
+            delete this.data[name];
+            this.data[newName] = data;
             return updates;
         }
         // Graph and update algorithms

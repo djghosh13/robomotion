@@ -212,17 +212,17 @@ class LevelEditor extends Game {
                 `;
             }
             element.querySelector("button.remove").addEventListener("dblclick", () => {
-                thisEditor.removeComponent(name);
+                thisEditor.removeComponent(element.getAttribute("data-name"));
             });
             element.querySelectorAll("input[type=text]").forEach(input => {
                 if (input.getAttribute("name") == "name") {
                     input.addEventListener("change", function () {
-                        thisEditor.renameComponent(name);
+                        thisEditor.renameComponent(element.getAttribute("data-name"));
                     });
                 }
                 else {
                     input.addEventListener("change", function () {
-                        thisEditor.updateComponent(name);
+                        thisEditor.updateComponent(element.getAttribute("data-name"));
                     });
                 }
             });
@@ -261,6 +261,7 @@ class LevelEditor extends Game {
             }
         }
         this.level.removeComponent(name);
+        this.selectComponent();
         this.refresh();
     }
     clickComponent(componentElement) {
@@ -324,7 +325,6 @@ class LevelEditor extends Game {
             nameInput.classList.remove("invalid");
             // Update in level
             let parameterUpdates = this.level.renameComponent(name, newName);
-            console.log(parameterUpdates);
             // HTML updates
             for (let [componentName, parameter] of parameterUpdates) {
                 let dependent = this.componentEditorEntries.get(componentName);
@@ -431,11 +431,11 @@ document.onreadystatechange = function (event) {
             editor.playMode = !editor.playMode;
         });
         // TODO: Make level loading official
-        for (let name in simple_level) {
-            let type = LevelData.TYPENAME_TO_TYPE.get(simple_level[name]["type"]);
-            editor.createComponent(type, name, simple_level[name]);
-        }
-        editor.selectComponent();
+        // for (let name in simple_level) {
+        //     let type = LevelData.TYPENAME_TO_TYPE.get(simple_level[name]["type"])!;
+        //     editor.createComponent(type, name, simple_level[name]);
+        // }
+        // editor.selectComponent();
         // Debug
         document.addEventListener("keydown", event => {
             if (event.key.toLowerCase() == "f") {
