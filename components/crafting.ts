@@ -180,7 +180,7 @@ class FireworkLauncher extends SimpleAttractor implements IInputter {
                 // Fire!
                 game.spawnObject(new FireworkTrail(
                     this.position.add(new Vector(0, -100)),
-                    280, this.heldObject.contents
+                    {power: 280, elements: this.heldObject.contents}
                 ));
                 game.destroyObject(this.heldObject)
                 this.heldObject = null;

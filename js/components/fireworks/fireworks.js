@@ -189,13 +189,14 @@ class FireworkParticleManager {
     }
 }
 class FireworkExplosion {
-    constructor(position, power, elements) {
+    constructor(position, data) {
         this.position = position;
         this.renderOrder = 500;
         this.registered = false;
         this.lifetime = this.maxLifetime = 5;
         this.particles = [];
-        for (let element of elements) {
+        this.multibreak = data.next || null;
+        for (let element of data.elements) {
             // Get random angles
             let baseAngle = Math.PI / 4 * (Math.random() - 0.5) - Math.PI / 2;
             let angles = [];
@@ -204,7 +205,7 @@ class FireworkExplosion {
             }
             // Spawn particles
             for (let i = 0; i < angles.length; i++) {
-                let magnitude = power * (1 + (Math.random() - 0.5));
+                let magnitude = data.power * (1 + (Math.random() - 0.5));
                 this.particles.push({
                     position: Vector.ZERO,
                     z: 0,
@@ -231,6 +232,14 @@ class FireworkExplosion {
         if (this.lifetime <= 0) {
             game.destroyObject(this);
         }
+        // Spawn multibreaks
+        if (this.multibreak != null) {
+            const OFFSHOOTS = 6;
+            for (let i = 0; i < OFFSHOOTS; i++) {
+                game.spawnObject(new FireworkTrail(this.position, this.multibreak, new Vector(300, 0).rotate(i * TWO_PI / OFFSHOOTS), 1.5));
+            }
+            this.multibreak = null;
+        }
     }
     render(ctx) { }
 }
@@ -246,33 +255,32 @@ FireworkExplosion.ELEMENT_COLOR = new Map([
     [FireworkElement.SPARKS, { h: 15, s: 100, l: 75 }],
 ]);
 class FireworkTrail extends FireworkExplosion {
-    constructor(position, power, elements) {
-        super(position, 0, []);
+    constructor(position, data, velocity = new Vector(0, -800), lifetime = 3) {
+        super(position, { power: 0, elements: [] });
         this.position = position;
-        this.power = power;
-        this.elements = elements;
+        this.data = data;
         this.fired = false;
-        this.lifetime = this.maxLifetime = 3;
+        this.lifetime = this.maxLifetime = lifetime;
         this.particles = [{
                 position: Vector.ZERO,
                 z: 0,
-                velocity: new Vector(0, -800),
+                velocity: velocity,
                 zvelocity: 0,
                 element: FireworkElement.GUNPOWDER
             }];
     }
     update(game) {
         super.update(game);
-        if (!this.fired && this.particles[0]['velocity'].y >= 0) {
+        if (!this.fired && this.lifetime < 0.6 * this.maxLifetime) {
             // Reached the top of the trajectory
             this.fired = true;
-            game.spawnObject(new FireworkExplosion(this.position.add(this.particles[0]['position']), this.power, this.elements));
+            game.spawnObject(new FireworkExplosion(this.position.add(this.particles[0]['position']), this.data));
         }
     }
 }
 class Sparks extends FireworkExplosion {
     constructor(position, power = 0) {
-        super(position, 0, []);
+        super(position, { power: 0, elements: [] });
         this.position = position;
         this.lifetime = this.maxLifetime = 2;
         // Spawn particles

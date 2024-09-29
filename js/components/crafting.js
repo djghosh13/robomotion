@@ -149,7 +149,7 @@ class FireworkLauncher extends SimpleAttractor {
             // TODO Convoluted, fix
             if (game.heldBy(this.heldObject).length == 0 && this.heldObject.velocity.norm < 1) {
                 // Fire!
-                game.spawnObject(new FireworkTrail(this.position.add(new Vector(0, -100)), 280, this.heldObject.contents));
+                game.spawnObject(new FireworkTrail(this.position.add(new Vector(0, -100)), { power: 280, elements: this.heldObject.contents }));
                 game.destroyObject(this.heldObject);
                 this.heldObject = null;
             }

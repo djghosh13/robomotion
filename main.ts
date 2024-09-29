@@ -77,10 +77,18 @@ document.onreadystatechange = function(event) {
                 // DEBUG
                 game.spawnObject(new FireworkTrail(
                     MouseController.instance.getTarget(),
-                    280,
-                    new Array(3).fill(
-                        1 + (Math.floor(MouseController.instance.getTarget().x / 100) % 7 + 7) % 7
-                    )
+                    {
+                        power: 280,
+                        elements: new Array(3).fill(
+                            1 + (Math.floor(MouseController.instance.getTarget().x / 100) % 7 + 7) % 7
+                        ),
+                        next: {
+                            power: 180,
+                            elements: new Array(2).fill(
+                                1 + Math.floor(Math.random() * 7) % 7
+                            )
+                        }
+                    }
                 ));
             })
             canvas.addEventListener("mouseup", event => {

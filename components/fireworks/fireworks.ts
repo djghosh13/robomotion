@@ -15,6 +15,11 @@ type HSLColor = {
     s: number;
     l: number;
 };
+type FireworkData = {
+    power: number;
+    elements: FireworkElement[];
+    next?: FireworkData;
+};
 
 
 function buildShaderProgram(gl: WebGLRenderingContext, vertexSource: string, fragmentSource: string): WebGLProgram | null {
@@ -266,13 +271,15 @@ class FireworkExplosion implements IComponent {
     maxLifetime: number;
     lifetime: number;
     particles: FireworkParticle[];
+    multibreak: FireworkData | null;
     registered: boolean;
 
-    constructor(public position: Vector, power: number, elements: FireworkElement[]) {
+    constructor(public position: Vector, data: FireworkData) {
         this.registered = false;
         this.lifetime = this.maxLifetime = 5;
         this.particles = [];
-        for (let element of elements) {
+        this.multibreak = data.next || null;
+        for (let element of data.elements) {
             // Get random angles
             let baseAngle = Math.PI/4 * (Math.random() - 0.5) - Math.PI/2;
             let angles: number[] = [];
@@ -281,7 +288,7 @@ class FireworkExplosion implements IComponent {
             }
             // Spawn particles
             for (let i = 0; i < angles.length; i++) {
-                let magnitude = power * (1 + (Math.random() - 0.5));
+                let magnitude = data.power * (1 + (Math.random() - 0.5));
                 this.particles.push({
                     position: Vector.ZERO,
                     z: 0,
@@ -308,6 +315,17 @@ class FireworkExplosion implements IComponent {
         if (this.lifetime <= 0) {
             game.destroyObject(this);
         }
+        // Spawn multibreaks
+        if (this.multibreak != null) {
+            const OFFSHOOTS = 6;
+            for (let i = 0; i < OFFSHOOTS; i++) {
+                game.spawnObject(new FireworkTrail(
+                    this.position, this.multibreak,
+                    new Vector(300, 0).rotate(i * TWO_PI / OFFSHOOTS), 1.5
+                ));
+            }
+            this.multibreak = null;
+        }
     }
     render(ctx: CanvasRenderingContext2D) { }
 }
@@ -315,26 +333,26 @@ class FireworkExplosion implements IComponent {
 
 class FireworkTrail extends FireworkExplosion {
     fired: boolean;
-    constructor(public position: Vector, public power: number, public elements: FireworkElement[]) {
-        super(position, 0, []);
+    constructor(public position: Vector, public data: FireworkData, velocity: Vector = new Vector(0, -800), lifetime: number = 3) {
+        super(position, {power: 0, elements: []});
         this.fired = false;
-        this.lifetime = this.maxLifetime = 3;
+        this.lifetime = this.maxLifetime = lifetime;
         this.particles = [{
             position: Vector.ZERO,
             z: 0,
-            velocity: new Vector(0, -800),
+            velocity: velocity,
             zvelocity: 0,
             element: FireworkElement.GUNPOWDER
         }];
     }
     update(game: Game) {
         super.update(game);
-        if (!this.fired && this.particles[0]['velocity'].y >= 0) {
+        if (!this.fired && this.lifetime < 0.6 * this.maxLifetime) {
             // Reached the top of the trajectory
             this.fired = true;
             game.spawnObject(new FireworkExplosion(
                 this.position.add(this.particles[0]['position']),
-                this.power, this.elements
+                this.data
             ));
         }
     }
@@ -343,7 +361,7 @@ class FireworkTrail extends FireworkExplosion {
 
 class Sparks extends FireworkExplosion {
     constructor(public position: Vector, power: number = 0) {
-        super(position, 0, []);
+        super(position, {power: 0, elements: []});
         this.lifetime = this.maxLifetime = 2;
         // Spawn particles
         let angle = Math.random() * TWO_PI;
